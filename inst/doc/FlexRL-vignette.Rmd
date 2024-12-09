@@ -1,0 +1,262 @@
+---
+title: "FlexRL-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{FlexRL-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(FlexRL)
+```
+
+`FlexRL` is an algorithm for **R**ecord **L**inkage written in R and cpp. It uses a **St**ochastic **E**xpectation **M**aximisation approach to combine 2 data sources and outputs the set of records referring to the same entities.
+
+More details are provided in our [paper](https://arxiv.org/abs/2407.06835).
+
+This vignette uses example subsets from the [SHIW](https://github.com/robachowyk/FlexRL-experiments/tree/main/SHIWApplication/SHIWData) data.
+
+```{r}
+df2016 = read.csv("exA.csv", row.names = 1)
+df2020 = read.csv("exB.csv", row.names = 1)
+```
+
+```{r}
+head(df2016)
+```
+
+```{r}
+head(df2020)
+```
+
+We will use several **P**artially **I**dentifying **V**ariable**s** to link the records: birth year, sex, marital status, education level, regional code. We treat them all as stable i.e. not evolving across time (though it may not be true). We show an example with **PIVs** that evolve over time later.
+
+```{r}
+PIVs_config = list( 
+  ANASCI     = list(stable = TRUE),
+  SESSO      = list(stable = TRUE),
+  STACIV     = list(stable = TRUE),
+  STUDIO     = list(stable = TRUE), 
+  IREG       = list(stable = TRUE) 
+  )
+PIVs = names(PIVs_config)
+PIVs_stable = sapply(PIVs_config, function(x) x$stable)
+```
+
+A first step in record linkage is to remove the records for which the linking variables are outside of the common support. If a record in the first file indicates a birth year which does not appear in the second file, we can suppose that this record has no link in the second file.
+
+We need to reinitialise the rownames to be used as indices later (to compare the true pairs and the linked pairs for instance).
+
+```{r}
+for(i in 1:length(PIVs)){
+  intersect_support_piv = intersect( unique(df2016[,PIVs[i]]), unique(df2020[,PIVs[i]]) )
+  df2016 = df2016[df2016[,PIVs[i]] %in% c(NA,intersect_support_piv),]
+  df2020 = df2020[df2020[,PIVs[i]] %in% c(NA,intersect_support_piv),]
+}
+
+rownames(df2016) = 1:nrow(df2016)
+rownames(df2020) = 1:nrow(df2020)
+```
+
+For these example data sets we know the true linkage structure.
+
+```{r}
+links = intersect(df2016$ID, df2020$ID)
+Nlinks = length(links)
+
+TrueDelta = data.frame( matrix(0, nrow=0, ncol=2) )
+for (i in 1:Nlinks)
+{
+  id = links[i]
+  id16 = which(df2016$ID == id)
+  id20 = which(df2020$ID == id)
+  TrueDelta = rbind(TrueDelta, cbind(rownames(df2016[id16,]),rownames(df2020[id20,])))
+}
+true_pairs = do.call(paste, c(TrueDelta, list(sep="_")))
+```
+
+```{r}
+nrow(df2016)
+```
+
+```{r}
+nrow(df2020)
+```
+
+```{r}
+Nlinks
+```
+
+We can look at the level of agreement of the **PIVs** in the set of true links, and the proportion of missing values:
+
+```{r}
+colSums(df2016[TrueDelta[,1],PIVs] == df2020[TrueDelta[,2],PIVs]) / Nlinks
+```
+
+```{r}
+colSums(is.na(df2016[TrueDelta[,1],PIVs])) / Nlinks
+```
+
+```{r}
+colSums(is.na(df2020[TrueDelta[,2],PIVs])) / Nlinks
+```
+
+`FlexRL` needs a specific encoding of the data to run properly. The categorical observed values in the data should be mapped to the set of natural numbers; missing values should be encoded as 0. The algorithm requires a column "source" and, it denotes by B the biggest data set.
+
+```{r}
+df2016$source = "df2016"
+df2020$source = "df2020"
+
+if(nrow(df2020)>nrow(df2016)){
+  encodedA = df2016
+  encodedB = df2020
+  cat("df2020 is the largest file, denoted encodedB")
+}else{
+  encodedB = df2016
+  encodedA = df2020
+  cat("df2016 is the largest file, denoted encodedB")
+}
+
+levels_PIVs = lapply(PIVs, function(x) levels(factor(as.character(c(encodedA[,x], encodedB[,x])))))
+
+for(i in 1:length(PIVs))
+{
+  encodedA[,PIVs[i]] = as.numeric(factor(as.character(encodedA[,PIVs[i]]), levels=levels_PIVs[[i]]))
+  encodedB[,PIVs[i]] = as.numeric(factor(as.character(encodedB[,PIVs[i]]), levels=levels_PIVs[[i]]))
+}
+nvalues = sapply(levels_PIVs, length)
+names(nvalues) = PIVs
+
+encodedA[,PIVs][ is.na(encodedA[,PIVs]) ] = 0
+encodedB[,PIVs][ is.na(encodedB[,PIVs]) ] = 0
+```
+
+The number of unique values per **PIV** gives information on their discriminative power:
+
+```{r}
+nvalues
+```
+
+We can now launch `FlexRL`:
+
+We elaborate on all the parameters below.
+
+```{r}
+data = list( A                    = encodedA,
+             B                    = encodedB, 
+             Nvalues              = nvalues,
+             PIVs_config          = PIVs_config,
+             controlOnMistakes    = c(TRUE, TRUE, FALSE, FALSE, FALSE),
+             sameMistakes         = TRUE,
+             phiMistakesAFixed    = FALSE,
+             phiMistakesBFixed    = FALSE,
+             phiForMistakesA      = c(NA, NA, NA, NA, NA),
+             phiForMistakesB      = c(NA, NA, NA, NA, NA)
+             )
+
+fit = FlexRL::stEM(  data                 = data,
+             StEMIter             = 50,
+             StEMBurnin           = 30,
+             GibbsIter            = 100, 
+             GibbsBurnin          = 70,
+             musicOn              = TRUE,
+             newDirectory         = NULL,
+             saveInfoIter         = FALSE
+             )
+```
+
+-   A
+
+-   B
+
+-   Nvalues
+
+-   PIVs_config
+
+-   controlOnMistakes
+
+-   sameMistakes
+
+-   phiMistakesAFixed
+
+-   phiMistakesBFixed
+
+-   phiForMistakesA
+
+-   phiForMistakesB
+
+-   newDirectory
+
+-   data
+
+-   StEMIter
+
+-   StEMBurnin
+
+-   GibbsIter
+
+-   GibbsBurnin
+
+-   sparseOutput
+
+-   musicOn
+
+-   newDirectory
+
+-   saveInfoIter
+
+The algorithm returns:
+
+-   Delta
+
+-   gamma
+
+-   eta
+
+-   alpha
+
+-   phi
+
+```{r}
+DeltaResult = fit$Delta
+colnames(DeltaResult) = c("idx20","idx16","probaLink")
+DeltaResult = DeltaResult[DeltaResult$probaLink>0.5,]
+DeltaResult
+```
+
+We can then compare the linked records with the true links:
+
+```{r}
+results = data.frame( Results=matrix(NA, nrow=6, ncol=1) )
+rownames(results) = c("tp","fp","fn","f1score","fdr","sens.")
+if(nrow(DeltaResult)>1){ 
+  linked_pairs    = do.call(paste, c(DeltaResult[,c("idx16","idx20")], list(sep="_")))
+  truepositive    = length( intersect(linked_pairs, true_pairs) ) 
+  falsepositive   = length( setdiff(linked_pairs, true_pairs) ) 
+  falsenegative   = length( setdiff(true_pairs, linked_pairs) ) 
+  precision       = truepositive / (truepositive + falsepositive) 
+  fdr             = 1 - precision
+  sensitivity     = truepositive / (truepositive + falsenegative) 
+  f1score         = 2 * (precision * sensitivity) / (precision + sensitivity)
+  results[,"FlexRL"] = c(truepositive,falsepositive,falsenegative,f1score,fdr,sensitivity)
+}
+results
+```
+
+The level of agreement among the linked records differs from the one in the true links:
+
+```{r}
+colSums(encodedA[DeltaResult[,"idx20"],PIVs] == encodedB[DeltaResult[,"idx16"],PIVs]) / nrow(DeltaResult)
+```
+
+The missing values and potential mistakes in the registration, the size of the overlapping set of records between the files, the instability of some **PIVs**, their distribution, and dependencies among them, are obstacles to the linkage.
+
+Several other algorithms for **R**ecord **L**inkage have been developed so far in the literature. We cite some of them in our [paper](https://arxiv.org/abs/2407.06835) but more can be found. Each has its own qualities and flaws. `FlexRL` usually outperforms in scenarios where the **PIVs** have low discriminative power with few expected registration errors; it is particularly efficient when there is enough information to model instability of some **PIV** changing across time (such as the postal code). More can be found on this topic in the simulation setting of the paper, which is provided in [`FlexRL-experiments`](https://github.com/robachowyk/FlexRL-experiments).
