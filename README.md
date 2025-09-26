@@ -4,9 +4,15 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-FlexRL is a package for Flexible Record Linkage. Its goal is to find the common set of records among 2 data sources. The area of applications of Record Linkage is broad, it can be used to link data from healthcare monitoring studies, to count casualties in conflict zones by combining several registries, ... Therefore FlexRL models registration errors (missing values and mistakes in the data) and handles dynamic **P**artially **I**dentifying **V**ariable**s** that evolve over time (the zipcode can change between the 2 data collections for instance) in order to produce a final set of linked records with posterior probabilities to be linked. The algorithm can take time to run on large data sets but has a low memory footprint and can easily run on standard computers.
+FlexRL is a package for Flexible Record Linkage, to find the common set of records among 2 data sources. The area of applications of Record Linkage is broad, it can be used to link data from any sources where an overlap in the populations is expected, like healthcare monitoring studies at 2 different time points, registries of casualties in conflict zones collected by distinct organisations, ... 
+
+FlexRL models registration errors (missing values and mistakes in the data) and handles dynamic **P**artially **I**dentifying **V**ariable**s** that evolve over time (e.g. postal code can change between the 2 data collections) in order to identify a final set of linked records (and their posterior probabilities to be linked). 
+
+The algorithm can take time to run on large data sets but has a low memory footprint and can easily run on standard computers.
 
 This package implements the **St**ochastic **EM** approach to Record Linkage described in '[A flexible model for Record Linkage](https://arxiv.org/abs/2407.06835)'. The main article and the supplementary material are available on arxiv.
+
+Please [open an issue](https://github.com/robachowyk/FlexRL/issues) to report any bug, to make a request, or to ask for help :-)
 
 ## Installation
 
@@ -27,6 +33,8 @@ remotes::install_github("robachowyk/FlexRL")
 ``` r
 devtools::install_github("robachowyk/FlexRL")
 ```
+
+FlexRL relies on Rcpp; when imported from Github, it may require gfortran and gcc.
 
 ## How to use `FlexRL`
 
@@ -221,7 +229,9 @@ TimeDifference       = DATA$TimeDifference
 proba_same_H         = DATA$proba_same_H
 
 # we generate data with an unstable PIV (representing that people move for instance)
-plot( sort(proba_same_H_5, decreasing=TRUE), ylim=c(0,1) )plot( TimeDifference, proba_same_H_5, ylim=c(0,1) )
+proba_same_H_5 = proba_same_H[,5]
+plot( sort(proba_same_H_5, decreasing=TRUE), ylim=c(0,1) )
+plot( TimeDifference, proba_same_H_5, ylim=c(0,1) )
 
 # it is realistic to bound the parameter for mistakes to not exceeds 10% 
 # (also for the unstable PIV since we model its dynamics)

@@ -57,8 +57,8 @@ record linkage is finished)}
 \value{
 A list with:
 \itemize{
-\item Delta, the summarry of a sparse matrix, i.e. a dataframe with 3 columns: the indices from the first data source A, the indices from the second data source B, the non-zero probability that the records associated with this pair of indices are linked (i.e. the
-posterior probabilities to be linked). One has to select the pairs where this proba>0.5 to get a valid set of linked records, (this threshold on the linkage probability is necessary to ensure the one-to-one assignment constraint of record linkage stating that one record in one file can at most be linked to one record in the other file).
+\item Delta, the summary of a sparse matrix, i.e. a data frame with 3 columns: the indices from the first data source A, the indices from the second data source B, the non-zero probability that the records associated with this pair of indices are linked (i.e. the
+posterior probabilities to be linked). One has to select the pairs where this probability > 0.5 to get a valid set of linked records, (this threshold on the linkage probability is necessary to ensure the one-to-one assignment constraint of record linkage stating that one record in one file can at most be linked to one record in the other file).
 \item gamma, a vector with the chain of the parameter gamma representing
 the proportion of linked records as a fraction of the smallest file,
 \item eta, a vector with the

@@ -2,7 +2,8 @@ bibentry(
   "Article",
   title = "A Flexible Model For Record Linkage",
   author = "Robach K. and van der Pas S. L. and van de Wiel M. A. and Hof M. H.",
-  year = 2024,
-  journal = "Journal of the Royal Statistical Society, Series C",
-  doi = "10.48550/arXiv.2407.06835",
+  year = "2025",
+  month = "02",
+  journal = "Journal of the Royal Statistical Society Series C: Applied Statistics",
+  doi = "10.1093/jrsssc/qlaf016",
 )

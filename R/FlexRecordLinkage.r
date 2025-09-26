@@ -148,6 +148,8 @@ DataCreation = function(PIVs_config, Nval, NRecords, Nlinks, PmistakesA, Pmistak
           cov                         = cbind( intercept )
         }
 
+        proba_same_H[,k]              = exp( - exp( as.matrix(cov) %*% log(moving_params[[k]]) ) * TimeDifference )
+
         # generate instability
         for(i in 1:Nlinks)
         {
@@ -162,6 +164,9 @@ DataCreation = function(PIVs_config, Nval, NRecords, Nlinks, PmistakesA, Pmistak
         }
       }
     }
+  }else{
+    TimeDifference = NA
+    proba_same_H = NA
   }
 
   A = dataSet1
@@ -610,7 +615,7 @@ simulateD = function(data, linksR, sumRowD, sumColD, truepivsA, truepivsB, gamma
 #' This function is only used if the PIV is unstable and evolve over time. If so the true values of a linked pair of records may not coincide.
 #' If you want to use a different survival function to model instability, you can change the function 'SurvivalUnstable' as well as this function 'loglikSurvival'.
 #'
-#' In our Stochastic Expectation Maximisation (StEM) algorithm (see ?FlexRL::StEM) we minimise - log(likelihood), which is equivalent to maximise log(likelihood). Therefore this function actually returns (and should return if you create your own) the opposite (-) of the log(likelihood) associated with the survival function defining the probabilities that true values coincide.
+#' In our Stochastic Expectation Maximisation (StEM) algorithm (see ?FlexRL::stEM) we minimise - log(likelihood), which is equivalent to maximise log(likelihood). Therefore this function actually returns (and should return if you create your own) the opposite (-) of the log(likelihood) associated with the survival function defining the probabilities that true values coincide.
 #'
 #' @param alphas A vector of size 1+cov in A+cov in B with coefficients of the hazard (baseline hazard and conditional hazard)
 #' @param X A matrix with number of linked records rows and 1+cov in A+cov in B columns (first column: intercept, following columns: covariates from A and then from B to model instability) (used for optimisation: X concatenate the X obtained in each iteration of the Gibbs sampler)
@@ -779,11 +784,15 @@ SurvivalUnstable = function(Xlinksk, alphask, times)
 stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE, newDirectory=NULL, saveInfoIter=FALSE)
 {
 
+  message("Starting FlexRL")
+
   PIVs = names(data$PIVs_config)
   PIVs_stable = sapply(data$PIVs_config, function(x) x$stable)
   PIVs_conditionalHazard_variables = sapply(data$PIVs_config, function(x) if(!x$stable){x$conditionalHazard}else{FALSE})
 
   # data$A, data$B, data$PIVs_stable, PIVs are used globally without necessarily being passed as parameters
+  fileA = data$A
+  fileB = data$B
 
   # ANY CONTROL ON MISTAKES? i.e. BOUND ON PHI
   if(any(data$controlOnMistakes)){
@@ -800,9 +809,9 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
       for(k in 1:length(unstablePIVs)){
         unstablePIV = unstablePIVs[k]
         if( length(data$PIVs_config[[unstablePIV]]$pSameH.cov.A)>0 )
-          testit::assert( "Some variables from A to include in the survival model for unstable PIVs do not exist.", data$PIVs_config[[unstablePIV]]$pSameH.cov.A %in% colnames(data$A) )
+          testit::assert( "Some variables from A to include in the survival model for unstable PIVs do not exist.", data$PIVs_config[[unstablePIV]]$pSameH.cov.A %in% colnames(fileA) )
         if( length(data$PIVs_config[[unstablePIV]]$pSameH.cov.B)>0 )
-          testit::assert( "Some variables from B to include in the survival model for unstable PIVs do not exist.", data$PIVs_config[[unstablePIV]]$pSameH.cov.B %in% colnames(data$B) )
+          testit::assert( "Some variables from B to include in the survival model for unstable PIVs do not exist.", data$PIVs_config[[unstablePIV]]$pSameH.cov.B %in% colnames(fileB) )
       }
     }
   }
@@ -821,14 +830,14 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
 
   # Parameters for the survival model describing pSameH for unstable PIVs (over time and potentially more covariates)
   # Number of coefficients: baseline + covariates from A + covariates from B
-  nCoefUnstable = lapply(seq_along(PIVs_stable), function(idx) if(PIVs_stable[idx]){ 0 }else{ ncol(data$A[, data$PIVs_config[[idx]]$pSameH.cov.A, drop=FALSE]) + ncol(data$B[, data$PIVs_config[[idx]]$pSameH.cov.B, drop=FALSE]) + 1 } )
+  nCoefUnstable = lapply(seq_along(PIVs_stable), function(idx) if(PIVs_stable[idx]){ 0 }else{ ncol(fileA[, data$PIVs_config[[idx]]$pSameH.cov.A, drop=FALSE]) + ncol(fileB[, data$PIVs_config[[idx]]$pSameH.cov.B, drop=FALSE]) + 1 } )
   alpha = lapply(seq_along(PIVs_stable), function(idx) if(PIVs_stable[idx]){ c(-Inf) }else{ rep(log(0.05), nCoefUnstable[[idx]]) })
 
   # Parameters for the registration errors (agreement in A, agreement in B, missing in A, missing in B)
   phi = lapply(data$Nvalues, function(x)  c(0.9,0.9,0.1,0.1))
 
-  NmissingA = lapply(seq_along(data$Nvalues), function(k) sum(data$A[,PIVs][,k]==0))
-  NmissingB = lapply(seq_along(data$Nvalues), function(k) sum(data$B[,PIVs][,k]==0))
+  NmissingA = lapply(seq_along(data$Nvalues), function(k) sum(fileA[,PIVs][,k]==0))
+  NmissingB = lapply(seq_along(data$Nvalues), function(k) sum(fileB[,PIVs][,k]==0))
 
   gamma.iter = array(NA, c(StEMIter, length(gamma)))
   eta.iter = lapply(data$Nvalues, function(x) array(NA, c(StEMIter, x)))
@@ -836,7 +845,9 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
   alpha.iter = lapply(nCoefUnstable, function(x) array(NA, c(StEMIter, x)))
 
   time.iter=c()
-  pb = progress::progress_bar$new(format = "Running StEM algorithm [:bar] :percent in :elapsed",       total = StEMIter, clear = FALSE, width= 60)
+  pb = progress::progress_bar$new(format = "Running StEM algorithm [:bar] :percent in :elapsed",       total = StEMIter+1, clear = FALSE, width= 60)
+
+  pb$tick()
 
   # Stochastic EM
   for(iter in 1:StEMIter)
@@ -846,8 +857,8 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
     initDeltaMap()
     linksR = base::matrix(0,0,2)
     linksCpp = linksR
-    sumRowD = rep(0, nrow(data$A))
-    sumColD = rep(0, nrow(data$B))
+    sumRowD = rep(0, nrow(fileA))
+    sumColD = rep(0, nrow(fileB))
     nlinkrec = 0
     survivalpSameH = base::matrix(1, nrow(linksR), length(data$Nvalues))
 
@@ -884,13 +895,13 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
         survivalpSameH = base::matrix(1, nrow(linksR), length(data$Nvalues))
         if(instability){
           if(nrow(linksR)>0){
-            times = abs(data$B[data$B$source!="synthetic",][linksR[,2], "date"] - data$A[data$A$source!="synthetic",][linksR[,1], "date"])
+            times = abs(fileB[fileB$source!="synthetic",][linksR[,2], "date"] - fileA[fileA$source!="synthetic",][linksR[,1], "date"])
             intercept = rep(1, nrow(linksR))
             for(k in 1:length(PIVs)){
               if(k %in% unstablePIVs){
                 cov_k = cbind( intercept,
-                               data$A[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
-                               data$B[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
+                               fileA[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
+                               fileB[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
                 survivalpSameH[,k] = SurvivalUnstable(cov_k, alpha[[k]], times)
               }
             }
@@ -924,13 +935,13 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
         survivalpSameH = base::matrix(1, nrow(linksR), length(data$Nvalues))
         if(instability){
           if(nrow(linksR)>0){
-            times = abs(data$B[data$B$source!="synthetic",][linksR[,2], "date"] - data$A[data$A$source!="synthetic",][linksR[,1], "date"])
+            times = abs(fileB[fileB$source!="synthetic",][linksR[,2], "date"] - fileA[fileA$source!="synthetic",][linksR[,1], "date"])
             intercept = rep(1, nrow(linksR))
             for(k in 1:length(PIVs)){
               if(k %in% unstablePIVs){
                 cov_k = cbind( intercept,
-                               data$A[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
-                               data$B[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
+                               fileA[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
+                               fileB[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
                 survivalpSameH[,k] = SurvivalUnstable(cov_k, alpha[[k]], times)
               }
             }
@@ -962,13 +973,13 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
       survivalpSameH = base::matrix(1, nrow(linksR), length(data$Nvalues))
       if(instability){
         if(nrow(linksR)>0){
-          times = abs(data$B[data$B$source!="synthetic",][linksR[,2], "date"] - data$A[data$A$source!="synthetic",][linksR[,1], "date"])
+          times = abs(fileB[fileB$source!="synthetic",][linksR[,2], "date"] - fileA[fileA$source!="synthetic",][linksR[,1], "date"])
           intercept = rep(1, nrow(linksR))
           for(k in 1:length(PIVs)){
             if(k %in% unstablePIVs){
               cov_k = cbind( intercept,
-                             data$A[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
-                             data$B[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
+                             fileA[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
+                             fileB[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
               survivalpSameH[,k] = SurvivalUnstable(cov_k, alpha[[k]], times)
               Hequal = truepivsA[linksR[,1],k] == truepivsB[linksR[,2],k]
               Vtmp_k = cbind( cov_k,
@@ -996,8 +1007,8 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
 
       # Update phi: count agreements / missings
       for(k in 1:length(data$Nvalues)){
-        agreements_in_A = sum(truepivsA[,k]==data$A[,PIVs][,k])
-        agreements_in_B = sum(truepivsB[,k]==data$B[,PIVs][,k])
+        agreements_in_A = sum(truepivsA[,k]==fileA[,PIVs][,k])
+        agreements_in_B = sum(truepivsB[,k]==fileB[,PIVs][,k])
         Vphi[[k]] = rbind( Vphi[[k]],
                            c( agreements_in_A,
                               agreements_in_B,
@@ -1015,7 +1026,7 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
     for(k in 1:length(data$Nvalues)){
       eta[[k]] = colSums(Veta[[k]])/sum(Veta[[k]])
       if(sum(eta[[k]]==0)>0){
-        warning("\nAn error may appear due to some rare values in PIV", k, "\nSo far, eta ", k, ":\n", eta[[k]], "\nCount values of PIV", k, "in A: \n", table(data$A[,PIVs][,k]), "\nand in B: \n", table(data$B[,PIVs][,k]), "\n")
+        warning("\nAn error may appear due to some rare values in PIV", k, "\nSo far, eta ", k, ":\n", eta[[k]], "\nCount values of PIV", k, "in A: \n", table(fileA[,PIVs][,k]), "\nand in B: \n", table(fileB[,PIVs][,k]), "\n")
       }
     }
 
@@ -1038,9 +1049,9 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
     # New phi
     for(k in 1:length(data$Nvalues))
     {
-      NtotalA = nGibbsIter * nrow(data$A)
-      NtotalB = nGibbsIter * nrow(data$B)
-      Ntotal  = nGibbsIter * (nrow(data$A) + nrow(data$B))
+      NtotalA = nGibbsIter * nrow(fileA)
+      NtotalB = nGibbsIter * nrow(fileB)
+      Ntotal  = nGibbsIter * (nrow(fileA) + nrow(fileB))
       if(k %in% controlMistakes){
         phi[[k]][1] = max( 0.9, sum(Vphi[[k]][,1]) / (NtotalA - sum(Vphi[[k]][,3])) )
         phi[[k]][2] = max( 0.9, sum(Vphi[[k]][,2]) / (NtotalB - sum(Vphi[[k]][,4])) )
@@ -1062,8 +1073,8 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
           }
         }
       }
-      phi[[k]][3] = sum(Vphi[[k]][,3]) / (nGibbsIter*nrow(data$A))
-      phi[[k]][4] = sum(Vphi[[k]][,4]) / (nGibbsIter*nrow(data$B))
+      phi[[k]][3] = sum(Vphi[[k]][,3]) / (nGibbsIter*nrow(fileA))
+      phi[[k]][4] = sum(Vphi[[k]][,4]) / (nGibbsIter*nrow(fileB))
     }
 
     # Administration
@@ -1089,7 +1100,7 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
 
   pb$terminate()
 
-  Delta = Matrix::Matrix(0, nrow=nrow(data$A), ncol=nrow(data$B), sparse=TRUE)
+  Delta = Matrix::Matrix(0, nrow=nrow(fileA), ncol=nrow(fileB), sparse=TRUE)
 
   gamma_avg = apply(gamma.iter, 2, function(x) mean(x[StEMBurnin:StEMIter , drop=FALSE]))
   eta_avg = lapply(eta.iter, function(x) apply(x[StEMBurnin:StEMIter, , drop=FALSE], 2, mean))
@@ -1115,13 +1126,13 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
     survivalpSameH = base::matrix(1, nrow(linksR), length(data$Nvalues))
     if(instability){
       if(nrow(linksR)>0){
-        times = abs(data$B[data$B$source!="synthetic",][linksR[,2], "date"] - data$A[data$A$source!="synthetic",][linksR[,1], "date"])
+        times = abs(fileB[fileB$source!="synthetic",][linksR[,2], "date"] - fileA[fileA$source!="synthetic",][linksR[,1], "date"])
         intercept = rep(1, nrow(linksR))
         for(k in 1:length(PIVs)){
           if(k %in% unstablePIVs){
             cov_k = cbind( intercept,
-                           data$A[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
-                           data$B[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
+                           fileA[linksR[,1], data$PIVs_config[[k]]$pSameH.cov.A, drop=FALSE],
+                           fileB[linksR[,2], data$PIVs_config[[k]]$pSameH.cov.B, drop=FALSE] )
             survivalpSameH[,k] = SurvivalUnstable(cov_k, alpha[[k]], times)
           }
         }
@@ -1224,8 +1235,8 @@ stEM = function(data, StEMIter, StEMBurnin, GibbsIter, GibbsBurnin, musicOn=TRUE
 #' }
 #' results
 launchNaive <- function(PIVs, encodedA, encodedB){
-  testit::assert( "NA in A should be encoded as 0.", sum(is.na(encodedA))==0 )
-  testit::assert( "NA in B should be encoded as 0.", sum(is.na(encodedB))==0 )
+  testit::assert( "NA in A should be encoded as 0.", sum(is.na(encodedA[,PIVs]))==0 )
+  testit::assert( "NA in B should be encoded as 0.", sum(is.na(encodedB[,PIVs]))==0 )
   rownames(encodedA) = 1:nrow(encodedA)
   rownames(encodedB) = 1:nrow(encodedB)
   DeltaNaiveLinked = data.frame( base::matrix(0, nrow=0, ncol=2) )

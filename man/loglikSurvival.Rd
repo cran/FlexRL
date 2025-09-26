@@ -24,7 +24,7 @@ This function is only used if the PIV is unstable and evolve over time. If so th
 If you want to use a different survival function to model instability, you can change the function 'SurvivalUnstable' as well as this function 'loglikSurvival'.
 }
 \details{
-In our Stochastic Expectation Maximisation (StEM) algorithm (see ?FlexRL::StEM) we minimise - log(likelihood), which is equivalent to maximise log(likelihood). Therefore this function actually returns (and should return if you create your own) the opposite (-) of the log(likelihood) associated with the survival function defining the probabilities that true values coincide.
+In our Stochastic Expectation Maximisation (StEM) algorithm (see ?FlexRL::stEM) we minimise - log(likelihood), which is equivalent to maximise log(likelihood). Therefore this function actually returns (and should return if you create your own) the opposite (-) of the log(likelihood) associated with the survival function defining the probabilities that true values coincide.
 }
 \examples{
 nCoefUnstable = 1
