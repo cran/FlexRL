@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>FlexRL-RL-vignette</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">FlexRL-RL-vignette</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(FlexRL)</span></code></pre></div>
+<p><code>FlexRL</code> is a package proposing flexible probabilistic
+<strong>R</strong>ecord <strong>L</strong>inkage with diagnostic tools
+for downstream inference on linked data. The record linkage algorithm
+<code>StEM()</code> uses a <strong>St</strong>ochastic
+<strong>E</strong>xpectation <strong>M</strong>aximisation approach to
+combine 2 data sources and outputs the set of records referring to the
+same entities.</p>
+<p>More details on the <a href="https://doi.org/10.1093/jrsssc/qlaf016">record linkage
+methodology</a>; on the <a href="https://doi.org/10.1002/sim.70292">false discovery proportion
+estimation</a>; and on the potential risks of downstream inference on
+linked data (Robach et al., in preparation).</p>
+<p>This vignette uses example subsets from the <a href="https://www.bancaditalia.it/statistiche/tematiche/indagini-famiglie-imprese/bilanci-famiglie/distribuzione-microdati/index.html">SHIW</a>
+data, from the <a href="https://www.icpsr.umich.edu/web/NACDA/studies/9681/versions/V5">NLTCS</a>
+data, and synthetic data to showcase how <code>FlexRL</code> works, how
+<code>StEM()</code> adapts to dynamic PIVs, how
+<code>RL_diagnostics</code> may guide downstream inference.</p>
+<p>We use 4 <strong>P</strong>artially <strong>I</strong>dentifying
+<strong>V</strong>ariable<strong>s</strong> to link the records: 2
+variables such that <code>dynamics = &quot;stable&quot;</code> and 2 variables
+that may change over time. Among these 2 dynamic PIVs, we will model the
+changes of one (<code>dynamics = &quot;structured&quot;</code>) and we will let
+the algorithm flexible about the other
+(<code>dynamics = &quot;flexible&quot;</code>).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>PIVs_config <span class="ot">&lt;-</span> <span class="fu">list</span>( <span class="at">V1 =</span> <span class="fu">list</span>(<span class="at">dynamics =</span> <span class="st">&quot;stable&quot;</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>                               <span class="at">bound_mistakes =</span> <span class="fu">c</span>(<span class="fl">0.10</span>,<span class="fl">0.10</span>),</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>                               <span class="at">fix_mistakes =</span> <span class="fu">c</span>(<span class="cn">NA</span>,<span class="cn">NA</span>)),</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>                     <span class="at">V2 =</span> <span class="fu">list</span>(<span class="at">dynamics =</span> <span class="st">&quot;stable&quot;</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>                               <span class="at">bound_mistakes =</span> <span class="fu">c</span>(<span class="fl">0.10</span>,<span class="fl">0.10</span>),</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>                               <span class="at">fix_mistakes =</span> <span class="fu">c</span>(<span class="cn">NA</span>,<span class="cn">NA</span>)),</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>                     <span class="at">V3 =</span> <span class="fu">list</span>(<span class="at">dynamics =</span> <span class="st">&quot;flexible&quot;</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>                               <span class="at">bound_mistakes =</span> <span class="fu">c</span>(<span class="cn">NA</span>,<span class="cn">NA</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>                               <span class="at">fix_mistakes =</span> <span class="fu">c</span>(<span class="cn">NA</span>,<span class="cn">NA</span>)),</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>                     <span class="at">V4 =</span> <span class="fu">list</span>(<span class="at">dynamics =</span> <span class="st">&quot;structured&quot;</span>,</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>                               <span class="at">bound_mistakes =</span> <span class="fu">c</span>(<span class="cn">NA</span>,<span class="cn">NA</span>),</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>                               <span class="at">fix_mistakes =</span> <span class="fu">c</span>(<span class="fl">0.02</span>,<span class="fl">0.02</span>),</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>                               <span class="at">cond_hazard_cov =</span> <span class="fu">list</span>(<span class="at">cov1 =</span> <span class="fu">c</span>(<span class="st">&quot;Xe&quot;</span>, <span class="st">&quot;Xf&quot;</span>),</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>                                                      <span class="at">cov2 =</span> <span class="fu">c</span>()))</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>)</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>PIVs <span class="ot">&lt;-</span> <span class="fu">names</span>(PIVs_config)</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>PIVs_stable <span class="ot">&lt;-</span> <span class="fu">sapply</span>(PIVs_config, <span class="cf">function</span>(x) x<span class="sc">$</span>dynamics <span class="sc">!=</span> <span class="st">&quot;structured&quot;</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>PIVs_type <span class="ot">&lt;-</span> <span class="fu">list</span>( <span class="at">V1 =</span> <span class="cn">FALSE</span>, <span class="at">V2 =</span> <span class="cn">FALSE</span>, <span class="at">V3 =</span> <span class="cn">FALSE</span>, <span class="at">V4 =</span> <span class="cn">TRUE</span> )</span></code></pre></div>
+<p>With PIVs that evolve over time, when modelling is possible, it is
+natural to parametrise the probability that underlying true values of
+the registered data for a pair of linked records coincide using a
+survival function. It is possible to use an exponential model, whose
+baseline hazard is constant in time; a Weibull model, whose baseline
+hazard is monotone in time; a Gompertz model, whose baseline hazard
+grows or decays exponentially in time; a piecewise-constant model, whose
+baseline hazard takes one value on each interval defined by given cut
+points; a custom model, supplied as a survival function
+<code>S(X, alpha, times)</code> together with a number of parameters and
+their starting values. These models may assume proportional hazards,
+accelerated failure time, proportional odds, additive hazards, … If the
+covariates are categorical, make sure to encode them into dummies and
+drop one category (an intercept is included automatically). Since only
+the agreement of the true values at the observed time gap is used, the
+likelihood is the same for every model,
+<code>-sum(Hequal \* log(S) + (1 - Hequal) \* log(1 - S))</code>, and
+the parameters are estimated with <code>stats::nlminb()</code> at each
+M-step.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>n_values  <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">8</span>, <span class="dv">9</span>, <span class="dv">10</span>, <span class="dv">15</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>p_mistake <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">V1 =</span> <span class="fu">c</span>(<span class="fl">0.02</span>, <span class="fl">0.02</span>), <span class="at">V2 =</span> <span class="fu">c</span>(<span class="fl">0.02</span>, <span class="fl">0.02</span>),</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>                  <span class="at">V3 =</span> <span class="fu">c</span>(<span class="fl">0.02</span>, <span class="fl">0.02</span>), <span class="at">V4 =</span> <span class="fu">c</span>(<span class="fl">0.02</span>, <span class="fl">0.02</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>p_missing <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">V1 =</span> <span class="fu">c</span>(<span class="fl">0.005</span>, <span class="fl">0.005</span>), <span class="at">V2 =</span> <span class="fu">c</span>(<span class="fl">0.005</span>, <span class="fl">0.005</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>                  <span class="at">V3 =</span> <span class="fu">c</span>(<span class="fl">0.005</span>, <span class="fl">0.005</span>), <span class="at">V4 =</span> <span class="fu">c</span>(<span class="fl">0.005</span>, <span class="fl">0.005</span>))</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>cond_hazard_params <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">V1 =</span> <span class="fu">c</span>(), <span class="at">V2 =</span> <span class="fu">c</span>(), <span class="at">V3 =</span> <span class="fu">c</span>(), <span class="at">V4 =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.35</span>, <span class="sc">-</span><span class="fl">0.50</span>, <span class="sc">-</span><span class="fl">0.70</span>))</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>gen_data <span class="ot">&lt;-</span> <span class="fu">simulate_data</span>(</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">PIVs_config =</span> PIVs_config, <span class="at">n_values =</span> n_values, <span class="at">n_records =</span> <span class="fu">c</span>(<span class="dv">450</span>, <span class="dv">500</span>), </span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="at">n_links =</span> <span class="dv">400</span>, <span class="at">p_mistake =</span> p_mistake, <span class="at">p_missing =</span> p_missing, </span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">cond_hazard_params =</span> cond_hazard_params, <span class="at">enforce_estimability =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="at">model_dynamics =</span> <span class="fu">survival_model</span>(<span class="st">&quot;exponential&quot;</span>)</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>)</span></code></pre></div>
+<p>We pre-process the data for the record linkage task: remove the
+records for which the linking variables are outside of the common
+support, check that PIVs are not strongly associated with each other
+(which may degrade record linkage performance), map PIV values to
+natural numbers and encode missing values as 0. The StEM algorithm
+denotes the smallest source as <code>A</code> and the largest as
+<code>B</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>prep_data <span class="ot">&lt;-</span> <span class="fu">prepare_data</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">data1 =</span> gen_data<span class="sc">$</span>data1, <span class="at">data2 =</span> gen_data<span class="sc">$</span>data2, <span class="at">label1 =</span> <span class="st">&quot;1&quot;</span>, <span class="at">label2 =</span> <span class="st">&quot;2&quot;</span>, </span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">PIVs_config =</span> PIVs_config, <span class="at">same_mistakes =</span> <span class="cn">TRUE</span>, <span class="at">uniq_id =</span> <span class="st">&quot;entity_id&quot;</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">restrict_support_intersection =</span> <span class="cn">TRUE</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>)</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co">#&gt; &#39;2&#39; is the larger source, saved as B; &#39;1&#39; saved as A.</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">head</span>(prep_data<span class="sc">$</span>encodedA)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co">#&gt;   V1 V2 V3 V4 change   date   Xe    Xf local_id entity_id source</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co">#&gt; 1  4  2  8  2  FALSE 0.0061 0.72  1.84        1         1      1</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; 2  5  1  2  2  FALSE 0.0071 2.48  0.91        2         2      1</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#&gt; 3  6  8  9 10  FALSE 0.0030 0.17  0.72        3         3      1</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; 4  3  8  7  6  FALSE 0.0084 0.98 -0.81        4         4      1</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt; 5  4  8  1  5  FALSE 0.0063 0.14  2.14        5         5      1</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#&gt; 6  1  4  9 15  FALSE 0.0080 2.57  1.93        6         6      1</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">head</span>(prep_data<span class="sc">$</span>encodedB)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co">#&gt;   V1 V2 V3 V4 change    date local_id entity_id source</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt; 1  4  2  8  2  FALSE 0.00899        1         1      2</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt; 2  5  1  2  2  FALSE 0.00268        2         2      2</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; 3  6  8  9 10  FALSE 0.00752        3         3      2</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 4  3  8  7  6  FALSE 0.00046        4         4      2</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; 5  4  8  1  5  FALSE 0.00455        5         5      2</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt; 6  1  4  9 15  FALSE 0.00182        6         6      2</span></span></code></pre></div>
+<p>For this example we know the true linkage structure.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">head</span>(prep_data<span class="sc">$</span>true_pairs)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co">#&gt;   1 2</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; 1 1 1</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; 2 2 2</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; 3 3 3</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 4 4 4</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 5 5 5</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 6 6 6</span></span></code></pre></div>
+<p>The number of unique values per <strong>PIV</strong> gives
+information on their discriminating power:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>prep_data<span class="sc">$</span>n_values</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co">#&gt; V1 V2 V3 V4 </span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#&gt;  8  9 10 15</span></span></code></pre></div>
+<p>We gauge how hard the record linkage task is using a naive linkage
+approach: matching records on exact agreement of identifying
+information.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>naive_fit <span class="ot">&lt;-</span> <span class="fu">naive_linkage</span>(<span class="at">PIVs =</span> PIVs, </span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>                           <span class="at">encodedA =</span> prep_data<span class="sc">$</span>encodedA, </span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>                           <span class="at">encodedB =</span> prep_data<span class="sc">$</span>encodedB)</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>df_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>( <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="at">nrow =</span> <span class="dv">11</span>, <span class="at">ncol =</span> <span class="dv">0</span>) )</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="fu">rownames</span>(df_results) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;TP              &quot;</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>                          <span class="st">&quot;FP              &quot;</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>                          <span class="st">&quot;FN              &quot;</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>                          <span class="st">&quot;sensitivity     &quot;</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>                          <span class="st">&quot;FDP             &quot;</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>                          <span class="st">&quot;hat FDP score   &quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>                          <span class="st">&quot;hat FDP score*  &quot;</span>,</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>                          <span class="st">&quot;hat FDP synth*  &quot;</span>,</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>                          <span class="st">&quot;max SMD         &quot;</span>,</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>                          <span class="st">&quot;min support IoU &quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>                          <span class="st">&quot;max MMD         &quot;</span>)</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>true_pairs      <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(prep_data<span class="sc">$</span>true_pairs, <span class="fu">list</span>(<span class="at">sep=</span><span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(naive_fit, <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) ) </span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) ) </span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;Naive     &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a>df_results</span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt;                  Naive     </span></span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt; TP                   261.00</span></span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; FP                   121.00</span></span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; FN                   139.00</span></span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; sensitivity            0.65</span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; FDP                    0.32</span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt; hat FDP score            NA</span></span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt; hat FDP score*           NA</span></span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt; hat FDP synth*           NA</span></span>
+<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt; max SMD                  NA</span></span>
+<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt; min support IoU          NA</span></span>
+<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt; max MMD                  NA</span></span></code></pre></div>
+<p>We run record linkage with <code>FlexRL</code>. The <code>data</code>
+should contain encodedA, encodedB, n_values, PIVs_config, same_mistakes.
+<code>StEM_iter</code>, <code>StEM_burnin</code> and
+<code>gibbs_iter</code>, <code>gibbs_burnin</code> are total number of
+iterations (including burn-in) and iterations to be discarded as
+burn-in. If <code>music_on</code> the algorithm opens a short tune in
+the browser when it finishes. You can <code>save_info_iter</code> (save
+environment information at each iteration) to
+<code>new_directory</code>. You can set starting values of the algorithm
+for parameters gamma and phi with <code>gamma0</code>,
+<code>phiA0</code>, <code>phiB0</code>, and change the number of samples
+drawn a posteriori to provide a linkage estimate with
+<code>n_post_sample</code> (set to 1000 as default).</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">StEM</span>(<span class="at">data =</span> prep_data)</span></code></pre></div>
+<p>The missing values and potential mistakes in the registration, the
+size of the overlapping set of records between the files, the total
+number of entities in the population, the low discriminative power of
+PIVs, PIVs potential dynamics across time, PIVs distribution,
+dependencies among PIVs, are obstacles to the linkage.</p>
+<p>The algorithm returns: <code>Delta</code>, <code>gamma</code>,
+<code>eta</code>, <code>alpha</code>, <code>phi</code>.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>delta_result <span class="ot">&lt;-</span> fit<span class="sc">$</span>Delta</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>delta_result <span class="ot">&lt;-</span> delta_result[delta_result<span class="sc">$</span>x<span class="sc">&gt;</span><span class="fl">0.5</span>, ]</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;i&quot;</span>,<span class="st">&quot;j&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) ) </span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) ) </span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive)  </span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a>df_results</span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a><span class="co">#&gt;                  Naive      FlexRL    </span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="co">#&gt; TP                   261.00     262.00</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a><span class="co">#&gt; FP                   121.00      44.00</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a><span class="co">#&gt; FN                   139.00     138.00</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a><span class="co">#&gt; sensitivity            0.65       0.66</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a><span class="co">#&gt; FDP                    0.32       0.14</span></span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a><span class="co">#&gt; hat FDP score            NA         NA</span></span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a><span class="co">#&gt; hat FDP score*           NA         NA</span></span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a><span class="co">#&gt; hat FDP synth*           NA         NA</span></span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a><span class="co">#&gt; max SMD                  NA         NA</span></span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a><span class="co">#&gt; min support IoU          NA         NA</span></span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a><span class="co">#&gt; max MMD                  NA         NA</span></span></code></pre></div>
+<p>Let us run record linkage diagnostics:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>diag <span class="ot">&lt;-</span> <span class="fu">RL_diagnostics</span>(<span class="at">fit =</span> fit, <span class="at">encodedA =</span> prep_data<span class="sc">$</span>encodedA, <span class="at">encodedB =</span> prep_data<span class="sc">$</span>encodedB,</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>                      <span class="at">compare_vars =</span> PIVs, <span class="at">vars_type_cont =</span> PIVs_type, <span class="at">PIVs =</span> PIVs, </span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>                      <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs, <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>                      <span class="at">RL_method =</span> <span class="st">&quot;FlexRL&quot;</span>, <span class="at">data =</span> prep_data,</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>                      <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> diag<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> diag<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> diag<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a></span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;FlexRL    &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>diag <span class="co"># default, equivalent to print(diag)</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co">#&gt; &lt;RL_diagnostics&gt;</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co">#&gt;   Linked pairs  (score &gt; 0.50):  306</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#&gt;   FDP           (true pairs):    0.144</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt;   Sensitivity   (true pairs):    0.655</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt;   FDP score estimate (RL task):            min threshold 0.50: FDP ~ 0.113</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.50: FDP ~ 0.113</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.004</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt;   FDP score estimate (augmented RL task):  min threshold 0.50: FDP ~ 0.129</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.50: FDP ~ 0.129</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.004</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt;   FDP synth estimate (augmented RL task):  min threshold 0.50: FDP ~ 0.152</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.50: FDP ~ 0.152</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.000</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#&gt;   The score-based estimator is valid when the linkage model is well calibrated to the data.</span></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a><span class="co">#&gt;   The synthetic-data estimator is valid when the augmented task is equivalent to the</span></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a><span class="co">#&gt;   original one, which requires links and non-links to have similar distributions; similar</span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a><span class="co">#&gt;   score-based FDP estimates on the original and augmented tasks support this prerequisite.</span></span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a><span class="co">#&gt;   Multivariate MMD  (linked A vs. A):  0.0031</span></span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a><span class="co">#&gt;   Multivariate MMD  (linked B vs. B):  0.0037</span></span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a><span class="co">#&gt;   IoU support V1  (linked A vs. A):  1.0000</span></span>
+<span id="cb13-27"><a href="#cb13-27" tabindex="-1"></a><span class="co">#&gt;   IoU support V2  (linked A vs. A):  1.0000</span></span>
+<span id="cb13-28"><a href="#cb13-28" tabindex="-1"></a><span class="co">#&gt;   IoU support V3  (linked A vs. A):  0.9000</span></span>
+<span id="cb13-29"><a href="#cb13-29" tabindex="-1"></a><span class="co">#&gt;   IoU support V4  (linked A vs. A):  1.0000</span></span>
+<span id="cb13-30"><a href="#cb13-30" tabindex="-1"></a><span class="co">#&gt;   IoU support V1  (linked B vs. B):  1.0000</span></span>
+<span id="cb13-31"><a href="#cb13-31" tabindex="-1"></a><span class="co">#&gt;   IoU support V2  (linked B vs. B):  1.0000</span></span>
+<span id="cb13-32"><a href="#cb13-32" tabindex="-1"></a><span class="co">#&gt;   IoU support V3  (linked B vs. B):  1.0000</span></span>
+<span id="cb13-33"><a href="#cb13-33" tabindex="-1"></a><span class="co">#&gt;   IoU support V4  (linked B vs. B):  0.8750</span></span>
+<span id="cb13-34"><a href="#cb13-34" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-35"><a href="#cb13-35" tabindex="-1"></a><span class="co">#&gt;   Agreement V1  (linked A vs. linked B):  0.9935</span></span>
+<span id="cb13-36"><a href="#cb13-36" tabindex="-1"></a><span class="co">#&gt;   Agreement V2  (linked A vs. linked B):  0.9902</span></span>
+<span id="cb13-37"><a href="#cb13-37" tabindex="-1"></a><span class="co">#&gt;   Agreement V3  (linked A vs. linked B):  0.9967</span></span>
+<span id="cb13-38"><a href="#cb13-38" tabindex="-1"></a><span class="co">#&gt;   Agreement V4  (linked A vs. linked B):  0.7974</span></span>
+<span id="cb13-39"><a href="#cb13-39" tabindex="-1"></a><span class="co">#&gt;   Agreement V1  (true pairs):  0.9450</span></span>
+<span id="cb13-40"><a href="#cb13-40" tabindex="-1"></a><span class="co">#&gt;   Agreement V2  (true pairs):  0.9250</span></span>
+<span id="cb13-41"><a href="#cb13-41" tabindex="-1"></a><span class="co">#&gt;   Agreement V3  (true pairs):  0.9525</span></span>
+<span id="cb13-42"><a href="#cb13-42" tabindex="-1"></a><span class="co">#&gt;   Agreement V4  (true pairs):  0.7600</span></span>
+<span id="cb13-43"><a href="#cb13-43" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-44"><a href="#cb13-44" tabindex="-1"></a><span class="co">#&gt;   SMD V1 values: {3, 4, 8, ...}  (linked A vs. A):  0.0664, 0.0694, -0.1025, ...</span></span>
+<span id="cb13-45"><a href="#cb13-45" tabindex="-1"></a><span class="co">#&gt;   SMD V2 values: {2, 5, 9, ...}  (linked A vs. A):  0.0775, 0.0370, -0.0528, ...</span></span>
+<span id="cb13-46"><a href="#cb13-46" tabindex="-1"></a><span class="co">#&gt;   SMD V3 values: {1, 3, 6, ...}  (linked A vs. A):  0.0509, -0.0744, 0.0539, ...</span></span>
+<span id="cb13-47"><a href="#cb13-47" tabindex="-1"></a><span class="co">#&gt;   SMD V4                         (linked A vs. A):  -0.0225</span></span>
+<span id="cb13-48"><a href="#cb13-48" tabindex="-1"></a><span class="co">#&gt;   SMD V1 values: {1, 7, 8, ...}  (linked B vs. B):  0.0704, -0.0578, -0.0742, ...</span></span>
+<span id="cb13-49"><a href="#cb13-49" tabindex="-1"></a><span class="co">#&gt;   SMD V2 values: {2, 4, 7, ...}  (linked B vs. B):  0.0589, 0.0454, -0.0631, ...</span></span>
+<span id="cb13-50"><a href="#cb13-50" tabindex="-1"></a><span class="co">#&gt;   SMD V3 values: {0, 3, 6, ...}  (linked B vs. B):  -0.0353, -0.0899, 0.0563, ...</span></span>
+<span id="cb13-51"><a href="#cb13-51" tabindex="-1"></a><span class="co">#&gt;   SMD V4                         (linked B vs. B):  -0.0345</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">print</span>(diag, <span class="at">threshold =</span> <span class="fl">0.75</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co">#&gt; &lt;RL_diagnostics&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co">#&gt;   Linked pairs  (score &gt; 0.75):  242</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="co">#&gt;   FDP           (true pairs):    0.074</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="co">#&gt;   Sensitivity   (true pairs):    0.560</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co">#&gt;   FDP score estimate (RL task):            min threshold 0.50: FDP ~ 0.113</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.75: FDP ~ 0.049</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.004</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt;   FDP score estimate (augmented RL task):  min threshold 0.50: FDP ~ 0.129</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.75: FDP ~ 0.057</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.004</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt;   FDP synth estimate (augmented RL task):  min threshold 0.50: FDP ~ 0.152</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co">#&gt;                                                threshold 0.75: FDP ~ 0.022</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co">#&gt;                                            max threshold 0.99: FDP ~ 0.000</span></span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co">#&gt;   The score-based estimator is valid when the linkage model is well calibrated to the data.</span></span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#&gt;   The synthetic-data estimator is valid when the augmented task is equivalent to the</span></span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co">#&gt;   original one, which requires links and non-links to have similar distributions; similar</span></span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a><span class="co">#&gt;   score-based FDP estimates on the original and augmented tasks support this prerequisite.</span></span>
+<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-23"><a href="#cb14-23" tabindex="-1"></a><span class="co">#&gt;   Multivariate MMD  (linked A vs. A):  0.0058</span></span>
+<span id="cb14-24"><a href="#cb14-24" tabindex="-1"></a><span class="co">#&gt;   Multivariate MMD  (linked B vs. B):  0.0065</span></span>
+<span id="cb14-25"><a href="#cb14-25" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-26"><a href="#cb14-26" tabindex="-1"></a><span class="co">#&gt;   IoU support V1  (linked A vs. A):  1.0000</span></span>
+<span id="cb14-27"><a href="#cb14-27" tabindex="-1"></a><span class="co">#&gt;   IoU support V2  (linked A vs. A):  1.0000</span></span>
+<span id="cb14-28"><a href="#cb14-28" tabindex="-1"></a><span class="co">#&gt;   IoU support V3  (linked A vs. A):  0.9000</span></span>
+<span id="cb14-29"><a href="#cb14-29" tabindex="-1"></a><span class="co">#&gt;   IoU support V4  (linked A vs. A):  1.0000</span></span>
+<span id="cb14-30"><a href="#cb14-30" tabindex="-1"></a><span class="co">#&gt;   IoU support V1  (linked B vs. B):  1.0000</span></span>
+<span id="cb14-31"><a href="#cb14-31" tabindex="-1"></a><span class="co">#&gt;   IoU support V2  (linked B vs. B):  1.0000</span></span>
+<span id="cb14-32"><a href="#cb14-32" tabindex="-1"></a><span class="co">#&gt;   IoU support V3  (linked B vs. B):  1.0000</span></span>
+<span id="cb14-33"><a href="#cb14-33" tabindex="-1"></a><span class="co">#&gt;   IoU support V4  (linked B vs. B):  1.0000</span></span>
+<span id="cb14-34"><a href="#cb14-34" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-35"><a href="#cb14-35" tabindex="-1"></a><span class="co">#&gt;   Agreement V1  (linked A vs. linked B):  0.9917</span></span>
+<span id="cb14-36"><a href="#cb14-36" tabindex="-1"></a><span class="co">#&gt;   Agreement V2  (linked A vs. linked B):  0.9876</span></span>
+<span id="cb14-37"><a href="#cb14-37" tabindex="-1"></a><span class="co">#&gt;   Agreement V3  (linked A vs. linked B):  0.9959</span></span>
+<span id="cb14-38"><a href="#cb14-38" tabindex="-1"></a><span class="co">#&gt;   Agreement V4  (linked A vs. linked B):  0.8636</span></span>
+<span id="cb14-39"><a href="#cb14-39" tabindex="-1"></a><span class="co">#&gt;   Agreement V1  (true pairs):  0.9450</span></span>
+<span id="cb14-40"><a href="#cb14-40" tabindex="-1"></a><span class="co">#&gt;   Agreement V2  (true pairs):  0.9250</span></span>
+<span id="cb14-41"><a href="#cb14-41" tabindex="-1"></a><span class="co">#&gt;   Agreement V3  (true pairs):  0.9525</span></span>
+<span id="cb14-42"><a href="#cb14-42" tabindex="-1"></a><span class="co">#&gt;   Agreement V4  (true pairs):  0.7600</span></span>
+<span id="cb14-43"><a href="#cb14-43" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb14-44"><a href="#cb14-44" tabindex="-1"></a><span class="co">#&gt;   SMD V1 values: {1, 4, 8, ...}  (linked A vs. A):  0.1055, 0.0917, -0.0985, ...</span></span>
+<span id="cb14-45"><a href="#cb14-45" tabindex="-1"></a><span class="co">#&gt;   SMD V2 values: {5, 6, 7, ...}  (linked A vs. A):  0.0660, 0.0736, -0.0640, ...</span></span>
+<span id="cb14-46"><a href="#cb14-46" tabindex="-1"></a><span class="co">#&gt;   SMD V3 values: {1, 3, 6, ...}  (linked A vs. A):  0.1134, -0.1360, 0.1251, ...</span></span>
+<span id="cb14-47"><a href="#cb14-47" tabindex="-1"></a><span class="co">#&gt;   SMD V4                         (linked A vs. A):  -0.0523</span></span>
+<span id="cb14-48"><a href="#cb14-48" tabindex="-1"></a><span class="co">#&gt;   SMD V1 values: {1, 2, 8, ...}  (linked B vs. B):  0.1307, 0.1007, -0.0702, ...</span></span>
+<span id="cb14-49"><a href="#cb14-49" tabindex="-1"></a><span class="co">#&gt;   SMD V2 values: {1, 6, 7, ...}  (linked B vs. B):  0.0859, 0.0817, -0.0960, ...</span></span>
+<span id="cb14-50"><a href="#cb14-50" tabindex="-1"></a><span class="co">#&gt;   SMD V3 values: {1, 3, 6, ...}  (linked B vs. B):  0.0950, -0.1531, 0.1279, ...</span></span>
+<span id="cb14-51"><a href="#cb14-51" tabindex="-1"></a><span class="co">#&gt;   SMD V4                         (linked B vs. B):  -0.0491</span></span></code></pre></div>
+<p>These summaries provide information on the linked data. We can also
+look at: the convergence of the StEM algorithm parameters, the linkage
+scores distribution, the data distributions between linked subset and
+original data sources, the divergence metrics of the linked data from
+the data sources, the FDP estimation.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">plot</span>(diag, <span class="st">&quot;convergence&quot;</span>)</span></code></pre></div>
+<p><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-1.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-2.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-3.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-4.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-5.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-6.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-7.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-8.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-9.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-10.png" alt="plot of chunk diagnostic-linkage-plots" /></p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">plot</span>(diag, <span class="st">&quot;scores&quot;</span>)</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-11.png" alt="plot of chunk diagnostic-linkage-plots" />
+<div class="figcaption">plot of chunk diagnostic-linkage-plots</div>
+</div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">plot</span>(diag, <span class="st">&quot;distributions&quot;</span>, <span class="at">threshold =</span> <span class="fl">0.75</span>)</span></code></pre></div>
+<p><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-12.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-13.png" alt="plot of chunk diagnostic-linkage-plots" /></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">plot</span>(diag, <span class="st">&quot;discrepancy&quot;</span>)</span></code></pre></div>
+<p><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-14.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-15.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-16.png" alt="plot of chunk diagnostic-linkage-plots" /><img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-17.png" alt="plot of chunk diagnostic-linkage-plots" /></p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">plot</span>(diag, <span class="st">&quot;FDP&quot;</span>)</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="plot of chunk diagnostic-linkage-plots" src="figure/diagnostic-linkage-plots-18.png" alt="plot of chunk diagnostic-linkage-plots" />
+<div class="figcaption">plot of chunk diagnostic-linkage-plots</div>
+</div>
+<p>Several other algorithms for <strong>R</strong>ecord
+<strong>L</strong>inkage have been developed so far in the literature.
+Each has its own qualities and flaws. <code>StEM()</code> usually
+outperforms in scenarios where the <strong>PIVs</strong> have low
+discriminative power with few expected registration errors; it is
+particularly efficient when there is enough information to model the
+dynamics of some <strong>PIV</strong> changing across time (such as
+postal code). In 2026, it is the only package taking account of dynamic
+PIVs. More can be found on this topic in the simulation setting of the
+<a href="https://doi.org/10.1093/jrsssc/qlaf016">methodology paper</a>,
+code is provided in <a href="https://github.com/robachowyk/FlexRL-experiments"><code>FlexRL-experiments</code></a>.
+More can be found on the FDP estimation methods in <a href="https://doi.org/10.1002/sim.70292">this paper</a>.</p>
+<p>With <code>link_with_&lt;pkg&gt;()</code> wrappers we can link
+records with “multilink”, “fastLink”, “BRL”, “reclin2”, “diyar”,
+“fedmatch”.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>brl_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">flds =</span> PIVs, <span class="at">types =</span> <span class="fu">rep</span>(<span class="st">&quot;bi&quot;</span>,<span class="fu">length</span>(PIVs)))</span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>fit_brl <span class="ot">&lt;-</span> <span class="fu">link_with_BRL</span>(prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, brl_args)</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_brl)</span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> delta_result[delta_result<span class="sc">$</span>LinkScore<span class="sc">&gt;</span><span class="fl">0.5</span>, ]</span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a></span>
+<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a></span>
+<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a>diag_brl <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_brl, prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB,</span>
+<span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a>                           PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs,</span>
+<span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a>                           <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;BRL&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a>                           brl_args))</span>
+<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a></span>
+<span id="cb20-20"><a href="#cb20-20" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> diag_brl<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb20-21"><a href="#cb20-21" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> diag_brl<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb20-22"><a href="#cb20-22" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> diag_brl<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb20-23"><a href="#cb20-23" tabindex="-1"></a></span>
+<span id="cb20-24"><a href="#cb20-24" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_brl<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb20-25"><a href="#cb20-25" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_brl<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb20-26"><a href="#cb20-26" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_brl<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb20-27"><a href="#cb20-27" tabindex="-1"></a></span>
+<span id="cb20-28"><a href="#cb20-28" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_brl<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb20-29"><a href="#cb20-29" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_brl<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb20-30"><a href="#cb20-30" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;BRL       &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_brl<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>multilink_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">types =</span> <span class="fu">rep</span>(<span class="st">&quot;bi&quot;</span>,<span class="fu">length</span>(PIVs)), <span class="at">breaks =</span> <span class="fu">list</span>(<span class="at">V1 =</span> <span class="cn">NA</span>, <span class="at">V2 =</span> <span class="cn">NA</span>, <span class="at">V3 =</span> <span class="cn">NA</span>, <span class="at">V4 =</span> <span class="cn">NA</span>),</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>                       <span class="at">duplicates =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">n_iter =</span> <span class="dv">500</span>, <span class="at">max_cc_size =</span> <span class="dv">50</span>)</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>fit_multilink <span class="ot">&lt;-</span> <span class="fu">link_with_multilink</span>( prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, multilink_args)</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_multilink[<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>, <span class="st">&quot;idxB&quot;</span>)])</span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a>diag_multilink <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_multilink, prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB,</span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>                                PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs,</span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a>                                <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;multilink&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a>                                multilink_args))</span>
+<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> diag_multilink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> diag_multilink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> diag_multilink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a></span>
+<span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_multilink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_multilink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_multilink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb21-27"><a href="#cb21-27" tabindex="-1"></a></span>
+<span id="cb21-28"><a href="#cb21-28" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_multilink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb21-29"><a href="#cb21-29" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_multilink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb21-30"><a href="#cb21-30" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;multilink &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_multilink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>fastLink_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">varnames =</span> PIVs, <span class="at">tol.em =</span> <span class="fl">1e-06</span>, <span class="at">threshold.match =</span> <span class="fl">0.5</span>, <span class="at">return.all =</span> <span class="cn">TRUE</span>, <span class="at">n.cores =</span> <span class="dv">1</span> )</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>fit_fastLink <span class="ot">&lt;-</span> <span class="fu">link_with_fastLink</span>( prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, fastLink_args )</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_fastLink)</span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> delta_result[delta_result<span class="sc">$</span>LinkScore<span class="sc">&gt;</span><span class="fl">0.5</span>, ]</span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a></span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a></span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>diag_fastLink <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_fastLink, prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB,</span>
+<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a>                                PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs,</span>
+<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a>                                <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;fastLink&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb22-18"><a href="#cb22-18" tabindex="-1"></a>                                fastLink_args))</span>
+<span id="cb22-19"><a href="#cb22-19" tabindex="-1"></a></span>
+<span id="cb22-20"><a href="#cb22-20" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> diag_fastLink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb22-21"><a href="#cb22-21" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> diag_fastLink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb22-22"><a href="#cb22-22" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> diag_fastLink<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb22-23"><a href="#cb22-23" tabindex="-1"></a></span>
+<span id="cb22-24"><a href="#cb22-24" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb22-25"><a href="#cb22-25" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb22-26"><a href="#cb22-26" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb22-27"><a href="#cb22-27" tabindex="-1"></a></span>
+<span id="cb22-28"><a href="#cb22-28" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb22-29"><a href="#cb22-29" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb22-30"><a href="#cb22-30" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;fastLink  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_fastLink<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a>reclin2_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">on =</span> PIVs, <span class="at">formula =</span> stats<span class="sc">::</span><span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">&quot;~&quot;</span>, <span class="fu">paste</span>(PIVs, <span class="at">collapse =</span> <span class="st">&quot;+&quot;</span>))),</span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a>                     <span class="at">type =</span> <span class="st">&quot;mpost&quot;</span>, <span class="at">add =</span> <span class="cn">TRUE</span>, <span class="at">variable =</span> <span class="st">&quot;selected&quot;</span>, <span class="at">score =</span> <span class="st">&quot;mpost&quot;</span>, <span class="at">threshold =</span> <span class="fl">0.5</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a>fit_reclin2 <span class="ot">&lt;-</span> <span class="fu">link_with_reclin2</span>( prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, reclin2_args )</span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_reclin2)</span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> delta_result[delta_result<span class="sc">$</span>LinkScore<span class="sc">&gt;</span><span class="fl">0.5</span>, ]</span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a></span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a></span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a>diag_reclin2 <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_reclin2, prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, </span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a>                               PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs, </span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a>                               <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;reclin2&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a>                               reclin2_args))</span>
+<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a></span>
+<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> diag_reclin2<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb23-22"><a href="#cb23-22" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> diag_reclin2<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb23-23"><a href="#cb23-23" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> diag_reclin2<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb23-24"><a href="#cb23-24" tabindex="-1"></a></span>
+<span id="cb23-25"><a href="#cb23-25" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb23-26"><a href="#cb23-26" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb23-27"><a href="#cb23-27" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb23-28"><a href="#cb23-28" tabindex="-1"></a></span>
+<span id="cb23-29"><a href="#cb23-29" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb23-30"><a href="#cb23-30" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb23-31"><a href="#cb23-31" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;reclin2   &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_reclin2<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a>diyar_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">probabilistic =</span> <span class="cn">TRUE</span>, <span class="at">return_weights =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>fit_diyar <span class="ot">&lt;-</span> <span class="fu">link_with_diyar</span>(prep_data<span class="sc">$</span>encodedA[, PIVs], prep_data<span class="sc">$</span>encodedB[, PIVs], diyar_args)</span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_diyar[<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>, <span class="st">&quot;idxB&quot;</span>)])</span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a></span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb24-13"><a href="#cb24-13" tabindex="-1"></a></span>
+<span id="cb24-14"><a href="#cb24-14" tabindex="-1"></a>names4diag <span class="ot">&lt;-</span> <span class="fu">c</span>(PIVs, <span class="st">&quot;local_id&quot;</span>, <span class="st">&quot;source&quot;</span>)</span>
+<span id="cb24-15"><a href="#cb24-15" tabindex="-1"></a>diag_diyar <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_diyar, </span>
+<span id="cb24-16"><a href="#cb24-16" tabindex="-1"></a>                             prep_data<span class="sc">$</span>encodedA[, names4diag], prep_data<span class="sc">$</span>encodedB[, names4diag], </span>
+<span id="cb24-17"><a href="#cb24-17" tabindex="-1"></a>                             PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs, </span>
+<span id="cb24-18"><a href="#cb24-18" tabindex="-1"></a>                             <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;diyar&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb24-19"><a href="#cb24-19" tabindex="-1"></a>                             diyar_args))</span>
+<span id="cb24-20"><a href="#cb24-20" tabindex="-1"></a></span>
+<span id="cb24-21"><a href="#cb24-21" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> diag_diyar<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb24-22"><a href="#cb24-22" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> diag_diyar<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb24-23"><a href="#cb24-23" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> diag_diyar<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb24-24"><a href="#cb24-24" tabindex="-1"></a></span>
+<span id="cb24-25"><a href="#cb24-25" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_diyar<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb24-26"><a href="#cb24-26" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_diyar<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb24-27"><a href="#cb24-27" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_diyar<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb24-28"><a href="#cb24-28" tabindex="-1"></a></span>
+<span id="cb24-29"><a href="#cb24-29" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_diyar<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb24-30"><a href="#cb24-30" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_diyar<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb24-31"><a href="#cb24-31" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;diyar     &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_diyar<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a>fedmatch_args <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">by =</span> PIVs, <span class="at">match_type =</span> <span class="st">&quot;multivar&quot;</span>, </span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>                      <span class="at">unique_key_1 =</span> <span class="st">&quot;unique_key_A&quot;</span>, <span class="at">unique_key_2 =</span> <span class="st">&quot;unique_key_B&quot;</span>,</span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>                      <span class="at">multivar_settings =</span> fedmatch<span class="sc">::</span><span class="fu">build_multivar_settings</span>(</span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>                        <span class="at">compare_type =</span> <span class="fu">rep</span>(<span class="st">&quot;indicator&quot;</span>, <span class="fu">length</span>(PIVs)),</span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>                        <span class="at">wgts =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">/</span><span class="fu">length</span>(PIVs), <span class="fu">length</span>(PIVs))))</span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a>fit_fedmatch <span class="ot">&lt;-</span> <span class="fu">link_with_fedmatch</span>( prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, fedmatch_args )</span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a></span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit_fedmatch)</span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a>delta_result    <span class="ot">&lt;-</span> delta_result[delta_result<span class="sc">$</span>LinkScore<span class="sc">&gt;</span><span class="fl">0.5</span>, ]</span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>linked_pairs    <span class="ot">&lt;-</span> <span class="fu">do.call</span>(paste, <span class="fu">c</span>(delta_result[,<span class="fu">c</span>(<span class="st">&quot;idxA&quot;</span>,<span class="st">&quot;idxB&quot;</span>)], <span class="fu">list</span>(<span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)))</span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>true_positive   <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">intersect</span>(linked_pairs, true_pairs) )</span>
+<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a>false_positive  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(linked_pairs, true_pairs) )</span>
+<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>false_negative  <span class="ot">&lt;-</span> <span class="fu">length</span>( <span class="fu">setdiff</span>(true_pairs, linked_pairs) )</span>
+<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>sensitivity     <span class="ot">&lt;-</span> true_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_negative) </span>
+<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a>fdp             <span class="ot">&lt;-</span> false_positive <span class="sc">/</span> (true_positive <span class="sc">+</span> false_positive) </span>
+<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a></span>
+<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a>df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(true_positive,false_positive,false_negative,sensitivity,fdp)</span>
+<span id="cb25-18"><a href="#cb25-18" tabindex="-1"></a></span>
+<span id="cb25-19"><a href="#cb25-19" tabindex="-1"></a>diag_fedmatch <span class="ot">&lt;-</span> <span class="fu">do.call</span>(RL_diagnostics, <span class="fu">c</span>(<span class="fu">list</span>(fit_fedmatch, prep_data<span class="sc">$</span>encodedA, prep_data<span class="sc">$</span>encodedB, </span>
+<span id="cb25-20"><a href="#cb25-20" tabindex="-1"></a>                               PIVs, PIVs_type, PIVs, <span class="at">true_pairs =</span> prep_data<span class="sc">$</span>true_pairs, </span>
+<span id="cb25-21"><a href="#cb25-21" tabindex="-1"></a>                               <span class="at">FDP_estimation =</span> <span class="cn">TRUE</span>, <span class="at">RL_method =</span> <span class="st">&quot;fedmatch&quot;</span>, <span class="at">maxIter4CV =</span> <span class="dv">1</span>, <span class="at">n_repeats =</span> <span class="dv">2</span>),</span>
+<span id="cb25-22"><a href="#cb25-22" tabindex="-1"></a>                               fedmatch_args))</span>
+<span id="cb25-23"><a href="#cb25-23" tabindex="-1"></a></span>
+<span id="cb25-24"><a href="#cb25-24" tabindex="-1"></a>df_results[<span class="dv">6</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> diag_fedmatch<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>RL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb25-25"><a href="#cb25-25" tabindex="-1"></a>df_results[<span class="dv">7</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> diag_fedmatch<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_score[<span class="dv">1</span>]</span>
+<span id="cb25-26"><a href="#cb25-26" tabindex="-1"></a>df_results[<span class="dv">8</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> diag_fedmatch<span class="sc">$</span>FDP_measures<span class="sc">$</span>curve<span class="sc">$</span>augmRL_FDP_synth[<span class="dv">1</span>]</span>
+<span id="cb25-27"><a href="#cb25-27" tabindex="-1"></a></span>
+<span id="cb25-28"><a href="#cb25-28" tabindex="-1"></a>smd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;smd&quot;</span>, <span class="fu">names</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb25-29"><a href="#cb25-29" tabindex="-1"></a>iou_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;iou&quot;</span>, <span class="fu">names</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb25-30"><a href="#cb25-30" tabindex="-1"></a>mmd_idx <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;mmd&quot;</span>, <span class="fu">names</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures))</span>
+<span id="cb25-31"><a href="#cb25-31" tabindex="-1"></a></span>
+<span id="cb25-32"><a href="#cb25-32" tabindex="-1"></a>df_results[<span class="dv">9</span>, <span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,smd_idx])</span>
+<span id="cb25-33"><a href="#cb25-33" tabindex="-1"></a>df_results[<span class="dv">10</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">min</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,iou_idx])</span>
+<span id="cb25-34"><a href="#cb25-34" tabindex="-1"></a>df_results[<span class="dv">11</span>,<span class="st">&quot;fedmatch  &quot;</span>] <span class="ot">&lt;-</span> <span class="fu">max</span>(diag_fedmatch<span class="sc">$</span>discrepancy_measures[<span class="dv">1</span>,mmd_idx])</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Record Linkage &quot;</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a><span class="co">#&gt; Record Linkage</span></span>
+<span id="cb26-3"><a href="#cb26-3" tabindex="-1"></a><span class="fu">round</span>(df_results[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,],<span class="dv">2</span>)</span>
+<span id="cb26-4"><a href="#cb26-4" tabindex="-1"></a><span class="co">#&gt;                  Naive      FlexRL     BRL        multilink  fastLink  </span></span>
+<span id="cb26-5"><a href="#cb26-5" tabindex="-1"></a><span class="co">#&gt; TP                   261.00     262.00     208.00     216.00     216.00</span></span>
+<span id="cb26-6"><a href="#cb26-6" tabindex="-1"></a><span class="co">#&gt; FP                   121.00      44.00      21.00      40.00      65.00</span></span>
+<span id="cb26-7"><a href="#cb26-7" tabindex="-1"></a><span class="co">#&gt; FN                   139.00     138.00     192.00     184.00     184.00</span></span>
+<span id="cb26-8"><a href="#cb26-8" tabindex="-1"></a><span class="co">#&gt; sensitivity            0.65       0.66       0.52       0.54       0.54</span></span>
+<span id="cb26-9"><a href="#cb26-9" tabindex="-1"></a><span class="co">#&gt; FDP                    0.32       0.14       0.09       0.16       0.23</span></span>
+<span id="cb26-10"><a href="#cb26-10" tabindex="-1"></a><span class="co">#&gt;                  reclin2    diyar      fedmatch  </span></span>
+<span id="cb26-11"><a href="#cb26-11" tabindex="-1"></a><span class="co">#&gt; TP                   250.00       82.0     268.00</span></span>
+<span id="cb26-12"><a href="#cb26-12" tabindex="-1"></a><span class="co">#&gt; FP                   102.00        0.0     173.00</span></span>
+<span id="cb26-13"><a href="#cb26-13" tabindex="-1"></a><span class="co">#&gt; FN                   150.00      318.0     132.00</span></span>
+<span id="cb26-14"><a href="#cb26-14" tabindex="-1"></a><span class="co">#&gt; sensitivity            0.62        0.2       0.67</span></span>
+<span id="cb26-15"><a href="#cb26-15" tabindex="-1"></a><span class="co">#&gt; FDP                    0.29        0.0       0.39</span></span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;FDP estimation &quot;</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a><span class="co">#&gt; FDP estimation</span></span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a><span class="fu">round</span>(df_results[<span class="dv">6</span><span class="sc">:</span><span class="dv">8</span>,],<span class="dv">2</span>)</span>
+<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a><span class="co">#&gt;                  Naive      FlexRL     BRL        multilink  fastLink  </span></span>
+<span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a><span class="co">#&gt; hat FDP score            NA       0.11       0.11        NaN       0.23</span></span>
+<span id="cb27-6"><a href="#cb27-6" tabindex="-1"></a><span class="co">#&gt; hat FDP score*           NA       0.13       0.11        NaN       0.24</span></span>
+<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a><span class="co">#&gt; hat FDP synth*           NA       0.15       0.10       0.27       0.24</span></span>
+<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a><span class="co">#&gt;                  reclin2    diyar      fedmatch  </span></span>
+<span id="cb27-9"><a href="#cb27-9" tabindex="-1"></a><span class="co">#&gt; hat FDP score           0.3        NaN       0.09</span></span>
+<span id="cb27-10"><a href="#cb27-10" tabindex="-1"></a><span class="co">#&gt; hat FDP score*          0.3        NaN       0.09</span></span>
+<span id="cb27-11"><a href="#cb27-11" tabindex="-1"></a><span class="co">#&gt; hat FDP synth*          0.3       0.07        NaN</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Linked divergence &quot;</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a><span class="co">#&gt; Linked divergence</span></span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a><span class="fu">round</span>(df_results[<span class="dv">9</span><span class="sc">:</span><span class="dv">11</span>,],<span class="dv">2</span>)</span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a><span class="co">#&gt;                  Naive      FlexRL     BRL        multilink  fastLink  </span></span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a><span class="co">#&gt; max SMD                  NA       0.08       0.12       0.14       0.20</span></span>
+<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a><span class="co">#&gt; min support IoU          NA       0.88       0.88       0.88       0.88</span></span>
+<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a><span class="co">#&gt; max MMD                  NA       0.00       0.01       0.00       0.01</span></span>
+<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a><span class="co">#&gt;                  reclin2    diyar      fedmatch  </span></span>
+<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a><span class="co">#&gt; max SMD                0.28       0.38       0.17</span></span>
+<span id="cb28-10"><a href="#cb28-10" tabindex="-1"></a><span class="co">#&gt; min support IoU        0.88       0.88       0.88</span></span>
+<span id="cb28-11"><a href="#cb28-11" tabindex="-1"></a><span class="co">#&gt; max MMD                0.02       0.06       0.00</span></span></code></pre></div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

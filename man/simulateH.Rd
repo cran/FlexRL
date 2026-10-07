@@ -2,118 +2,91 @@
 % Please edit documentation in R/FlexRecordLinkage.r
 \name{simulateH}
 \alias{simulateH}
-\title{simulateH}
+\title{Simulate the true PIV values underlying the registered records}
 \usage{
 simulateH(data, links, survivalpSameH, sumRowD, sumColD, eta, phi)
 }
 \arguments{
-\item{data}{A list with elements:
-\itemize{
-\item A: the smallest data source (encoded: the categorical values of the PIVs have to be mapped to sets of natural numbers and missing values are encoded as 0).
-\item B: the largest data source (encoded).
-\item Nvalues: A vector (of size number of PIVs) with the number fo unique values per PIVs (in the order of the PIVs defined in PIVs_config).
-\item PIVs_config: A list (of size number of PIVs) where element names are the PIVs and element values are lists with elements: stable (boolean for whether the PIV is stable), conditionalHazard (boolean for whether there are external covariates available to model instability, only required if stable is FALSE), pSameH.cov.A and pSameH.covB (vectors with strings corresponding to the names of the covariates to use to model instability from file A and file B, only required if stable is FALSE, empty vectors may be provided if conditionalHazard is FALSE).
-\item controlOnMistakes: A vector (of size number of PIVs) of booleans indicating potential bounds on the mistakes probabilities for each PIV. For each PIV, if TRUE there will be control on mistake and the mistake probability will not go above 10\%. If FALSE there is no bound on the probability of mistake. WATCH OUT, if you suspect that a variable is unstable but you do not have data to model its dynamics the boolean value should be set to FALSE to allow the parameter for mistake to adapt for the instability. However if you model this instability, the boolean value should be set to TRUE to help the algorithm differenciate the mistakes from the changes over time.
-\item sameMistakes: A boolean value for whether there should be one parameter for the mistakes in A and B or whether each source should have its own parameter. Setting sameMistakes=TRUE is recommended in case of small data sources; the estimation with 2 parameters in that case will fail to capture the mistakes correctly while 1 parameter will be more adapted.
-\item phiMistakesAFixed A vector (of size number of PIVs) of booleans indicating whether the parameters for mistakes should be fixed in case of instability. It should be FALSE, except for unstable PIVs for which it may be set to TRUE in order to avoid estimability problems between the parameter for mistake and the parameter for changes across time.
-\item phiMistakesBFixed A vector (of size number of PIVs) of booleans indicating whether the parameters for mistakes should be fixed in case of instability. It should be FALSE, except for unstable PIVs for which it may be set to TRUE in order to avoid estimability problems between the parameter for mistake and the parameter for changes across time.
-\item phiForMistakesA A vector (of size number of PIVs) of NA or fixed values for the parameters for mistakes. It should be NA, except for unstable PIVs for which one wants to fix the parameter to avoid estimability problem (as indicated with the boolean values in phiMistakesAFixed). In that case it should be set the the expected value for the probability of mistake. If you have no idea: you can put it to 0, the algorithm is quite robust to wrongly fixed parameters.
-\item phiForMistakesB A vector (of size number of PIVs) of NA or fixed values for the parameters for mistakes. It should be NA, except for unstable PIVs for which one wants to fix the parameter to avoid estimability problem (as indicated with the boolean values in phiMistakesBFixed). In that case it should be set the the expected value for the probability of mistake. If you have no idea: you can put it to 0, the algorithm is quite robust to wrongly fixed parameters.
-}}
+\item{data}{List with \code{encodedA}, \code{encodedB} (the two encoded data
+sources, missing values as \code{0}), \code{n_values}, \code{PIVs_config} and
+\code{same_mistakes}; see \code{\link[=StEM]{StEM()}}.}
 
-\item{links}{A matrix of 2 columns with indices of the linked records.}
+\item{links}{2-column matrix of (A, B) indices for the currently linked
+records.}
 
-\item{survivalpSameH}{a matrix of size (nrow=number of linked records, ncol=number of PIVs), filled for each PIV in column, with 1 if the PIV is stable and with the probability for true values of the records to coincide as calculate by survival function if the PIV is unstable.}
+\item{survivalpSameH}{Matrix (n links x n PIVs); \code{1} for stable PIVs, and the
+survival probability that the true value is unchanged for unstable PIVs.}
 
-\item{sumRowD}{A boolean vector indicating, for each row of the linkage matrix, i.e. for each record in the smallest file A, whether the record has a link in B or not.}
+\item{sumRowD}{Logical vector, one entry per record in A: does it form a
+link?}
 
-\item{sumColD}{A boolean vector indicating, for each column of the linkage matrix, i.e. for each record in the largest file B, whether the record has a link in A or not.}
+\item{sumColD}{Logical vector, one entry per record in B: does it form a
+link?}
 
-\item{eta}{The distribution weights for the PIVs.}
+\item{eta}{List (one per PIV) of the distribution of true values.}
 
-\item{phi}{The proportion of mistakes and missing for the PIVs.}
+\item{phi}{List (one per PIV) of length-4 vectors: agreement prob. in A,
+agreement prob. in B, missing prob. in A, missing prob. in B.}
 }
 \value{
-A list with 2 matrices of the shapes of both data sources, representing the true values of the PIVs underlying the registered values present in the data sources.
+List with \code{truepivsA} and \code{truepivsB}, matrices (same shape as the
+input data) of simulated true PIV values.
 }
 \description{
-simulateH
+Draw the latent true values of each PIV given the currently registered
+(possibly mistaken or missing) values, the current linkage status,
+and the current parameters.
 }
 \examples{
-PIVs_config = list( V1 = list(stable = TRUE),
-                    V2 = list(stable = TRUE),
-                    V3 = list(stable = TRUE),
-                    V4 = list(stable = TRUE),
-                    V5 = list( stable = FALSE,
-                               conditionalHazard = FALSE,
-                               pSameH.cov.A = c(),
-                               pSameH.cov.B = c()) )
-PIVs = names(PIVs_config)
-PIVs_stable = sapply(PIVs_config, function(x) x$stable)
-Nval = c(6, 7, 8, 9, 15)
-NRecords = c(13, 15)
-Nlinks = 6
-PmistakesA = c(0.02, 0.02, 0.02, 0.02, 0.02)
-PmistakesB = c(0.02, 0.02, 0.02, 0.02, 0.02)
-PmissingA = c(0.007, 0.007, 0.007, 0.007, 0.007)
-PmissingB = c(0.007, 0.007, 0.007, 0.007, 0.007)
-moving_params = list(V1=c(),V2=c(),V3=c(),V4=c(),V5=c(0.28))
-enforceEstimability = TRUE
-DATA = DataCreation( PIVs_config,
-                     Nval,
-                     NRecords,
-                     Nlinks,
-                     PmistakesA,
-                     PmistakesB,
-                     PmissingA,
-                     PmissingB,
-                     moving_params,
-                     enforceEstimability)
-A                    = DATA$A
-B                    = DATA$B
-Nvalues              = DATA$Nvalues
-
-encodedA = A
-encodedB = B
-
-encodedA[,PIVs][ is.na(encodedA[,PIVs]) ] = 0
-encodedB[,PIVs][ is.na(encodedB[,PIVs]) ] = 0
-
-dataForStEM = list( A                    = encodedA,
-                    B                    = encodedB,
-                    Nvalues              = Nvalues,
-                    PIVs_config          = PIVs_config,
-                    controlOnMistakes    = c(TRUE, TRUE, TRUE, TRUE, TRUE),
-                    sameMistakes         = TRUE,
-                    phiMistakesAFixed    = TRUE,
-                    phiMistakesBFixed    = TRUE,
-                    phiForMistakesA      = c(NA, NA, NA, NA, 0),
-                    phiForMistakesB      = c(NA, NA, NA, NA, 0)
-)
-
-initDeltaMap()
+PIVs_config <- list( V1 = list(dynamics = "stable",
+                               bound_mistakes = c(0.10,0.10),
+                               fix_mistakes = c(NA,NA)),
+                     V2 = list(dynamics = "stable",
+                               bound_mistakes = c(0.10,0.10),
+                               fix_mistakes = c(NA,NA)),
+                     V3 = list(dynamics = "flexible",
+                               bound_mistakes = c(NA,NA),
+                               fix_mistakes = c(NA,NA)),
+                     V4 = list(dynamics = "structured",
+                               bound_mistakes = c(NA,NA),
+                               fix_mistakes = c(0.03,0.03),
+                               cond_hazard_cov = list(cov1=c("Xe", "Xf"),
+                                                    cov2=c())) )
+n_values  <- c( 5, 6, 7, 12 )
+p_mistake <- list( V1 = c(0.02, 0.02), V2 = c(0.02, 0.02),
+                  V3 = c(0.05, 0.05), V4 = c(0.02, 0.02) )
+p_missing <- list( V1 = c(0.005, 0.005), V2 = c(0.005, 0.005),
+                  V3 = c(0.005, 0.005), V4 = c(0.005, 0.005) )
+cond_hazard_params <- list( V1 = c(), V2 = c(), 
+                            V3 = c(), V4 = log(c(0.7, 0.6, 0.5)) )
+gen_data <- simulate_data( PIVs_config, n_values, c(150, 200), 100, 
+                           p_mistake, p_missing, cond_hazard_params, TRUE )
+data_StEM <- prepare_data( gen_data$data1, gen_data$data2, "1", "2",
+                           PIVs_config, TRUE, "entity_id", TRUE )
+PIVs_stable <- sapply(data_StEM$PIVs_config, function(x)
+                        x$dynamics != "structured")
+FlexRL:::initDeltaMap()
 linksR = base::matrix(0,0,2)
 linksCpp = linksR
-sumRowD = rep(0, nrow(dataForStEM$A))
-sumColD = rep(0, nrow(dataForStEM$B))
+sumRowD = rep(0, nrow(data_StEM$encodedA))
+sumColD = rep(0, nrow(data_StEM$encodedB))
 nlinkrec = 0
-survivalpSameH = base::matrix(1, nrow(linksR), length(dataForStEM$Nvalues))
+survivalpSameH = base::matrix(1, nrow(linksR), length(data_StEM$n_values))
 gamma = 0.5
-eta = lapply(dataForStEM$Nvalues, function(x) rep(1/x,x))
-phi = lapply(dataForStEM$Nvalues, function(x)  c(0.9,0.9,0.1,0.1))
-nCoefUnstable = lapply( seq_along(PIVs_stable),
-                        function(idx)
-                        if(PIVs_stable[idx]){ 0 }
-                        else{
-                        ncol(dataForStEM$A[, dataForStEM$PIVs_config[[idx]]$pSameH.cov.A,
+eta = lapply(data_StEM$n_values, function(x) rep(1/x,x))
+phi = lapply(data_StEM$n_values, function(x)  c(0.9,0.9,0.1,0.1))
+n_coef_unstable = lapply( seq_along(PIVs_stable), function(idx)
+ if(PIVs_stable[idx]){ 0 }else{
+   ncol(data_StEM$encodedA[, data_StEM$PIVs_config[[idx]]$cond_hazard_cov$covA,
                              drop=FALSE]) +
-                        ncol(dataForStEM$B[, dataForStEM$PIVs_config[[idx]]$pSameH.cov.B,
-                             drop=FALSE]) +
-                        1 } )
+   ncol(data_StEM$encodedB[, data_StEM$PIVs_config[[idx]]$cond_hazard_cov$covB,
+                             drop=FALSE]) + 1 } )
 alpha = lapply( seq_along(PIVs_stable),
-                function(idx) if(PIVs_stable[idx]){ c(-Inf) }else{
-                  rep(log(0.05), nCoefUnstable[[idx]]) })
-newTruePivs = simulateH(data=dataForStEM, links=linksCpp, survivalpSameH=survivalpSameH,
+                function(idx) if(PIVs_stable[idx]){ c(-Inf) }
+                else{ rep(log(0.05), n_coef_unstable[[idx]]) }
+              )
+newTruePivs = simulateH(data=data_StEM, links=linksCpp,
+                        survivalpSameH=survivalpSameH,
                         sumRowD=sumRowD, sumColD=sumColD, eta=eta, phi=phi)
 truepivsA = newTruePivs$truepivsA
 truepivsB = newTruePivs$truepivsB

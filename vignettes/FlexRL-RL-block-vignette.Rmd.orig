@@ -1,0 +1,339 @@
+---
+title: "FlexRL-RL-block-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{FlexRL-RL-block-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r, include = FALSE}
+pak::pak("robachowyk/FlexRL")
+options(digits = 2, scipen = 999)
+```
+
+```{r setup}
+library(FlexRL)
+```
+
+`FlexRL` is a package proposing flexible probabilistic **R**ecord **L**inkage with diagnostic tools for downstream inference on linked data. The record linkage algorithm `StEM()` uses a **St**ochastic **E**xpectation **M**aximisation approach to combine 2 data sources and outputs the set of records referring to the same entities.
+
+More details on the [record linkage methodology](https://doi.org/10.1093/jrsssc/qlaf016); on the [false discovery proportion estimation](https://doi.org/10.1002/sim.70292); and on the potential risks of downstream inference on linked data (Robach et al., in preparation).
+
+Several other algorithms for record linkage are available in R. The `link_with_*()` wrappers of FlexRL run them through one common interface, so that the same diagnostics and false discovery proportion (FDP) estimators apply to all of them: `link_with_FlexRL()`, `link_with_BRL()`, `link_with_fastLink()`, `link_with_multilink()`, `link_with_reclin2()`, `link_with_diyar()`, `link_with_fedmatch()`. Each wrapper takes the two encoded sources and a named list of arguments forwarded to the underlying package, and returns a list with `idxA`, `idxB` (row indices of the linked records in dataA and dataB) and `LinkScore` (the linkage scores, `NULL` when the package does not return any).
+
+This vignette runs these wrappers on the same pipeline for:
+- a regional subset of the [NLTCS](https://www.icpsr.umich.edu/web/NACDA/studies/9681/versions/V5) data (1982 and 1994 waves)
+- a regional subset of the [SHIW](https://www.bancaditalia.it/statistiche/tematiche/indagini-famiglie-imprese/bilanci-famiglie/distribuzione-microdati/index.html) data (2016 and 2020 waves)
+- the full SHIW data with and without regional blocking
+
+## One pipeline for all the wrappers
+
+```{r functionalities}
+wrapper_args <- function(method, prep_data, ...) {
+  PIVs <- names(prep_data$PIVs_config)
+  args <- c(...)
+
+  switch(method,
+         FlexRL    = c(list(data = prep_data), 
+                       args[intersect(names(args), names(formals(FlexRL::StEM)))]),
+         BRL       = c(list(flds = PIVs, types = rep("bi", length(PIVs)), nIter = 1000), 
+                       args[intersect(names(args), c(names(formals(BRL::compareRecords)), names(formals(BRL::bipartiteGibbs))))]),
+         fastLink  = c(list(varnames = PIVs, tol.em = 1e-06, threshold.match = 0.5, return.all = TRUE, n.cores = 1), 
+                       args[intersect(names(args), names(formals(fastLink::fastLink)))]),
+         multilink = c(list(types = rep("bi", length(PIVs)), breaks = stats::setNames(as.list(rep(NA, length(PIVs))), PIVs), 
+                            duplicates = c(0, 0), n_iter = 200, max_cc_size = 50),
+                       args[intersect(names(args), c(names(formals(multilink::create_comparison_data)),
+                                                     names(formals(multilink::reduce_comparison_data)),
+                                                     names(formals(multilink::specify_prior)),
+                                                     names(formals(multilink::gibbs_sampler)),
+                                                     names(formals(multilink::find_bayes_estimate)),
+                                                     names(formals(multilink::relabel_bayes_estimate))))]),
+         reclin2   = c(list(on = PIVs, formula = stats::as.formula(paste("~", paste(PIVs, collapse = "+"))), 
+                            type = "mpost", add = TRUE, variable = "selected", score = "mpost", threshold = 0.5), 
+                       args[intersect(names(args), c(names(formals(reclin2::pair)), 
+                                                     names(formals(reclin2::compare_pairs)),
+                                                     names(formals(reclin2::problink_em)),
+                                                     names(formals(stats::predict)),
+                                                     names(formals(reclin2::select_threshold))))]),
+         diyar     = c(list(probabilistic = TRUE, return_weights = TRUE), 
+                       args[intersect(names(args), c(names(formals(diyar::prob_score_range)),
+                                                     names(formals(diyar::links_wf_probabilistic))))]),
+         fedmatch  = c(list(by = PIVs, match_type = "multivar", unique_key_1 = "unique_key_A", 
+                            unique_key_2 = "unique_key_B", multivar_settings = fedmatch::build_multivar_settings(
+                              compare_type = rep("indicator", length(PIVs)), 
+                              wgts = rep(1 / length(PIVs), length(PIVs)))), 
+                       args[intersect(names(args), names(formals(fedmatch::merge_plus)))])
+         )
+}
+
+run_wrapper <- function(method, prep_data, arguments) {
+  PIVs <- names(prep_data$PIVs_config)
+  link_with <- get(paste0("link_with_", method), envir = asNamespace("FlexRL"))
+  if (method == "diyar") {
+    prep_data$encodedA <- prep_data$encodedA[, c(PIVs, "local_id", "source")]
+    prep_data$encodedB <- prep_data$encodedB[, c(PIVs, "local_id", "source")]
+  }
+
+  tryCatch(link_with(prep_data$encodedA, prep_data$encodedB, arguments),
+           error = function(e) {
+             if (grepl("cannot allocate|memory|bad_alloc|too large|long vectors", conditionMessage(e), ignore.case = TRUE)) {
+               message(method, ": memory error (", conditionMessage(e), "), results reported as NA")
+               return(NULL)
+             }
+             stop(e)
+           })
+}
+
+evaluate_linkage <- function(fit, true_pairs, threshold = 0.5) {
+  if (is.null(fit)) return(rep(NA_real_, 5))
+  delta_result <- data.frame(idxA = fit$idxA, idxB = fit$idxB)
+  if (!is.null(fit$LinkScore)) delta_result <- delta_result[fit$LinkScore > threshold, , drop = FALSE]
+  linked_pairs   <- do.call(paste, c(delta_result, list(sep = "_")))
+  true_positive  <- length(intersect(linked_pairs, true_pairs))
+  false_positive <- length(setdiff(linked_pairs, true_pairs))
+  false_negative <- length(setdiff(true_pairs, linked_pairs))
+  c(TP = true_positive, FP = false_positive, FN = false_negative,
+    sensitivity = true_positive / (true_positive + false_negative),
+    FDP = false_positive / (true_positive + false_positive))
+}
+
+results_rows <- c("TP", 
+                  "FP", 
+                  "FN", 
+                  "sensitivity", 
+                  "FDP",
+                  "hat FDP score", 
+                  "hat FDP score*", 
+                  "hat FDP synth*",
+                  "max SMD", 
+                  "min support IoU", 
+                  "max MMD")
+
+run_all_wrappers <- function(prep_data, PIVs_type, methods, FDP_estimation = TRUE,
+                             maxIter4CV = 3, n_repeats = 5, ...) {
+  args <- list(...)
+  
+  op <- options()
+  on.exit(options(op))
+  PIVs <- names(prep_data$PIVs_config)
+  true_pairs <- do.call(paste, c(prep_data$true_pairs, list(sep = "_")))
+  df_results <- data.frame(matrix(NA, nrow = length(results_rows), ncol = 0))
+  rownames(df_results) <- results_rows
+
+  naive_fit <- naive_linkage(PIVs = PIVs, encodedA = prep_data$encodedA, encodedB = prep_data$encodedB)
+  df_results[1:5, "Naive"] <- evaluate_linkage(list(idxA = naive_fit[[1]], idxB = naive_fit[[2]]), true_pairs)
+
+  for (method in methods) {
+    arguments <- wrapper_args(method, prep_data, args)
+    fit <- run_wrapper(method, prep_data, arguments)
+    df_results[1:5, method] <- evaluate_linkage(fit, true_pairs)
+    if (is.null(fit) || length(fit$idxA) == 0) next
+
+    encodedA <- prep_data$encodedA
+    encodedB <- prep_data$encodedB
+    if (method == "diyar") {
+      encodedA <- encodedA[, c(PIVs, "local_id", "source")]
+      encodedB <- encodedB[, c(PIVs, "local_id", "source")]
+    }
+
+    diag <- do.call(RL_diagnostics, c(list(fit, encodedA, encodedB, PIVs, PIVs_type, PIVs,
+                                           true_pairs = prep_data$true_pairs, FDP_estimation = FDP_estimation,
+                                           RL_method = method, data = prep_data, maxIter4CV = maxIter4CV, n_repeats = n_repeats),
+                                      arguments))
+    if (FDP_estimation) {
+      df_results[6, method] <- diag$FDP_measures$curve$RL_FDP_score[1]
+      df_results[7, method] <- diag$FDP_measures$curve$augmRL_FDP_score[1]
+      df_results[8, method] <- diag$FDP_measures$curve$augmRL_FDP_synth[1]
+    }
+    df_results[9,  method] <- max(diag$discrepancy_measures[1, grep("smd", names(diag$discrepancy_measures))])
+    df_results[10, method] <- min(diag$discrepancy_measures[1, grep("iou", names(diag$discrepancy_measures))])
+    df_results[11, method] <- max(diag$discrepancy_measures[1, grep("mmd", names(diag$discrepancy_measures))])
+  }
+  df_results
+}
+
+show_results <- function(df_results) {
+  cat("Record Linkage\n");      print(df_results[1:5, ],  2)
+  cat("\nFDP estimation\n");    print(df_results[6:8, ],  2)
+  cat("\nLinked divergence\n"); print(df_results[9:11, ], 2)
+}
+
+methods <- c("FlexRL", "BRL", "multilink", "fastLink", "reclin2", "diyar", "fedmatch")
+```
+
+We will fill a table of results throughout the vignette, gathering for each record linkage method: linkage performance, data quality diagnostics: FDP estimation, measures of divergence of linked data from sources.
+
+## Regional subset of the NLTCS data
+
+We use 4 **P**artially **I**dentifying **V**ariable**s** to link the records: sex, birth month and birth year are `stable`, the state code may change over time but we cannot model these changes so we set this variable as `flexible`.
+
+```{r nltcs-block}
+df1982 <- read.csv("ex-reg-NLTCS-82.csv", row.names = 1)
+df1994 <- read.csv("ex-reg-NLTCS-94.csv", row.names = 1)
+
+PIVs_config <- list(
+  SEX       = list(dynamics = "stable",   bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  DOB_MONTH = list(dynamics = "stable",   bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  DOB_YEAR  = list(dynamics = "stable",   bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  STATE     = list(dynamics = "flexible", bound_mistakes = c(NA, NA),     fix_mistakes = c(NA, NA)))
+PIVs <- names(PIVs_config)
+PIVs_type <- list(SEX = FALSE, DOB_MONTH = TRUE, DOB_YEAR = TRUE, STATE = FALSE)
+```
+
+`prepare_data()` removes the records for which the linking variables are outside of the common support, checks that PIVs are not strongly associated with each other (which may degrade record linkage performance), maps PIV values to natural numbers and encodes missing values as 0. The StEM algorithm denotes the smallest source as `A` and the largest as `B`. The true pairs are known from the identifier ID (they are indexed on the rows of `encodedA` and `encodedB`, after the support restriction).
+
+```{r nltcs-block-prepare-data, warning=FALSE}
+prep_data <- prepare_data(df1982, df1994, "1982", "1994", PIVs_config, same_mistakes = TRUE, uniq_id = "ID")
+
+c(n_A = nrow(prep_data$encodedA), n_B = nrow(prep_data$encodedB), n_links = nrow(prep_data$true_pairs))
+
+prep_data$n_values
+```
+
+```{r nltcs-block-results, warning=FALSE, message=FALSE, results="hide"}
+df_results_NLTCS <- run_all_wrappers(prep_data, PIVs_type, methods)
+```
+
+```{r}
+show_results(df_results_NLTCS)
+```
+
+## Regional subset of the SHIW data
+
+We use 4 **P**artially **I**dentifying **V**ariable**s** to link the records: sex and birth year are `stable`, education level and marital status are `flexible`.
+
+```{r shiw-block, warning=FALSE}
+df2016 <- read.csv("ex-reg-SHIW-16.csv", row.names = 1)
+df2020 <- read.csv("ex-reg-SHIW-20.csv", row.names = 1)
+
+PIVs_config <- list(
+  ANASCI = list(dynamics = "stable", bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  SESSO  = list(dynamics = "stable", bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  STUDIO = list(dynamics = "stable", bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)),
+  STACIV = list(dynamics = "stable", bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA)))
+PIVs <- names(PIVs_config)
+PIVs_type <- list(ANASCI = TRUE, SESSO = FALSE, STUDIO = FALSE, STACIV = FALSE)
+
+prep_data <- prepare_data(df2016, df2020, "2016", "2020", PIVs_config, same_mistakes = TRUE, uniq_id = "ID")
+
+c(n_A = nrow(prep_data$encodedA), n_B = nrow(prep_data$encodedB), n_links = nrow(prep_data$true_pairs))
+
+prep_data$n_values
+```
+
+```{r shiw-block-results, warning=FALSE, message=FALSE, results="hide"}
+df_results_SHIW <- run_all_wrappers(prep_data, PIVs_type, methods)
+```
+
+```{r}
+show_results(df_results_SHIW)
+```
+
+## Full SHIW data
+
+```{r shiw, warning=FALSE, message=FALSE, results="hide"}
+df2016 <- read.csv("SHIW2016.csv", row.names = 1)
+df2020 <- read.csv("SHIW2020.csv", row.names = 1)
+df2016 <- df2016[!df2016$ID %in% df2016$ID[duplicated(df2016$ID)], ]
+df2020 <- df2020[!df2020$ID %in% df2020$ID[duplicated(df2020$ID)], ]
+
+PIVs_config_full <- c(PIVs_config,
+  list(IREG = list(dynamics = "stable", bound_mistakes = c(0.10, 0.10), fix_mistakes = c(NA, NA))))
+PIVs_full <- names(PIVs_config_full)
+PIVs_type_full <- c(PIVs_type, IREG = FALSE)
+
+prep_data_full <- prepare_data(df2016, df2020, "2016", "2020", PIVs_config_full, same_mistakes = TRUE, uniq_id = "ID")
+true_pairs_full <- do.call(paste, c(prep_data_full$true_pairs, list(sep = "_")))
+
+df_results_full <- data.frame(matrix(NA, nrow = 6, ncol = 0))
+rownames(df_results_full) <- c("TP", "FP", "FN", "sensitivity", "FDP", "minutes")
+for (method in methods) {
+  t0 <- Sys.time()           
+  args <- list(StEM_iter = 20, StEM_burnin = 10, gibbs_iter = 20, gibbs_burnin = 10, n_post_sample = 100, 
+               n_iter = 500, max_cc_size = 50, n.cores = 4)
+  fit <- run_wrapper(method, prep_data_full, wrapper_args(method, prep_data_full, args))
+  df_results_full[1:5, method] <- evaluate_linkage(fit, true_pairs_full)
+  df_results_full[6, method] <- if (is.null(fit)) NA else round(as.numeric(Sys.time() - t0, units = "mins"))
+}
+
+# on Apple M1 Max ARM chip, 8-core CPU, 32 GB of memory
+# fastLink: memory error / multilink: memory error / BRL: memory error / diyar: memory error
+```
+
+```{r}
+cat("Record Linkage performance on large files")
+round(df_results_full,2)
+```
+
+Note that when methods do not ensure the one-to-one assignment constraint the number of False Positives may be high due to many-to-many falsely linked pairs of records.
+
+## Loop over the regions of the SHIW data with blocking
+
+Blocking on the region code `IREG` splits the task into 20 smaller ones. Within a region, `IREG` is constant and the linkage uses the 4 other PIVs. Region 2 is the regional subset used above.
+
+```{r shiw-regional-blocking, warning=FALSE, message=FALSE, results="hide"}
+regions <- sort(unique(c(df2016$IREG, df2020$IREG)))
+results_IREG <- list()
+for (r in regions) {
+  block2016 <- df2016[df2016$IREG == r, ]
+  block2020 <- df2020[df2020$IREG == r, ]
+  prep_data_r <- prepare_data(block2016, block2020, "2016", "2020", PIVs_config, same_mistakes = TRUE, uniq_id = "ID")
+  true_pairs_r <- do.call(paste, c(prep_data_r$true_pairs, list(sep = "_")))
+  for (method in methods) {
+    t0 <- Sys.time()
+    fit <- run_wrapper(method, prep_data_r, wrapper_args(method, prep_data_r))
+    results_IREG[[length(results_IREG) + 1]] <- data.frame(
+      IREG = r, n_A = nrow(prep_data_r$encodedA), 
+      n_B = nrow(prep_data_r$encodedB), n_links = length(true_pairs_r),
+      method = method, t(evaluate_linkage(fit, true_pairs_r)),
+      seconds = round(as.numeric(Sys.time() - t0, units = "secs")))
+  }
+}
+results_IREG <- do.call(rbind, results_IREG)
+```
+
+```{r}
+cat("Record Linkage on regional subsets")
+round(results_IREG,2)
+```
+
+Averaged over the regions and total computing time:
+
+```{r}
+summary_IREG <- do.call(rbind, lapply(split(results_IREG, results_IREG$method), function(d) {
+  data.frame(method = d$method[1],
+             FDP = mean(d$FDP, na.rm=TRUE),
+             sensitivity = mean(d$sensitivity, na.rm=TRUE),
+             TP = mean(d$TP, na.rm=TRUE), FP = mean(d$FP, na.rm=TRUE), FN = mean(d$FN, na.rm=TRUE),
+             minutes = sum(d$seconds) / 60)
+}))
+rownames(summary_IREG) <- NULL
+
+round(summary_IREG,2)
+```
+
+```{r shiw-regional-blocking-plot, fig.width=7, fig.height=5}
+colours <- grDevices::hcl.colors(length(methods), "Dark 3")
+names(colours) <- methods
+plot(NA, xlim = c(0, 1), ylim = c(0, 1), xlab = "sensitivity", ylab = "FDP",
+     main = "SHIW linked region by region (one point per region)")
+for (method in methods) {
+  d <- results_IREG[results_IREG$method == method, ]
+  points(d$sensitivity, d$FDP, col = colours[method], pch = 19)
+}
+legend("bottomright", legend = methods, col = colours, pch = 19, bty = "n")
+```
+
+The 4 PIVs have little discriminating power on these data (birth years, sex, 6 education levels, 4 marital statuses) and the two waves overlap on about 40% of their records (6.430 true links, 14.917 records in A, 16.445 record sin B), so the task is hard for every package. `fastLink`, `multilink`, `BRL` and `diyar` are not scalable (out of memory errors). 
+
+We compare methods with blocking over the 20 regions: `reclin2` (EM on the comparison patterns, threshold at 0.5 on the posterior) links a lot of records reaching a high sensitivity at the price of a high FDP; `fastLink`, `fedmatch` and `multilink` link about half of the true pairs with a FDP around 0.7; `BRL` and `diyar` are the most conservative, with a FDP around 0.3 and a sensitivity around 0.2; `FlexRL` performance is between these conservative and permissive methods. 
+
+In terms of computational time however, `FlexRL` and `multilink` are more than 10 times slower than the other methods. The results were computed with the code above, on a machine with Apple M1 Max ARM chip, 8-core CPU, 32 GB of memory.

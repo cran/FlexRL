@@ -10,39 +10,39 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// F2
-List F2(IntegerVector U, int nvals);
-RcppExport SEXP _FlexRL_F2(SEXP USEXP, SEXP nvalsSEXP) {
+// indexPatterns
+List indexPatterns(IntegerVector U, int nvals);
+RcppExport SEXP _FlexRL_indexPatterns(SEXP USEXP, SEXP nvalsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type U(USEXP);
     Rcpp::traits::input_parameter< int >::type nvals(nvalsSEXP);
-    rcpp_result_gen = Rcpp::wrap(F2(U, nvals));
+    rcpp_result_gen = Rcpp::wrap(indexPatterns(U, nvals));
     return rcpp_result_gen;
 END_RCPP
 }
-// F33
-IntegerMatrix F33(List A, List B, int nvals);
-RcppExport SEXP _FlexRL_F33(SEXP ASEXP, SEXP BSEXP, SEXP nvalsSEXP) {
+// pairPatterns
+IntegerMatrix pairPatterns(List A, List B, int nvals);
+RcppExport SEXP _FlexRL_pairPatterns(SEXP ASEXP, SEXP BSEXP, SEXP nvalsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type A(ASEXP);
     Rcpp::traits::input_parameter< List >::type B(BSEXP);
     Rcpp::traits::input_parameter< int >::type nvals(nvalsSEXP);
-    rcpp_result_gen = Rcpp::wrap(F33(A, B, nvals));
+    rcpp_result_gen = Rcpp::wrap(pairPatterns(A, B, nvals));
     return rcpp_result_gen;
 END_RCPP
 }
-// sspaste2
-CharacterVector sspaste2(IntegerMatrix A);
-RcppExport SEXP _FlexRL_sspaste2(SEXP ASEXP) {
+// pasteIntoPattern
+CharacterVector pasteIntoPattern(IntegerMatrix A);
+RcppExport SEXP _FlexRL_pasteIntoPattern(SEXP ASEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerMatrix >::type A(ASEXP);
-    rcpp_result_gen = Rcpp::wrap(sspaste2(A));
+    rcpp_result_gen = Rcpp::wrap(pasteIntoPattern(A));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -116,27 +116,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// cartesianProduct
-IntegerMatrix cartesianProduct(IntegerVector vec1, IntegerVector vec2);
-RcppExport SEXP _FlexRL_cartesianProduct(SEXP vec1SEXP, SEXP vec2SEXP) {
+// ExpandGrid
+IntegerMatrix ExpandGrid(IntegerVector vec1, IntegerVector vec2);
+RcppExport SEXP _FlexRL_ExpandGrid(SEXP vec1SEXP, SEXP vec2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type vec1(vec1SEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type vec2(vec2SEXP);
-    rcpp_result_gen = Rcpp::wrap(cartesianProduct(vec1, vec2));
-    return rcpp_result_gen;
-END_RCPP
-}
-// ExpandGrid
-IntegerMatrix ExpandGrid(IntegerVector vector1, IntegerVector vector2);
-RcppExport SEXP _FlexRL_ExpandGrid(SEXP vector1SEXP, SEXP vector2SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerVector >::type vector1(vector1SEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type vector2(vector2SEXP);
-    rcpp_result_gen = Rcpp::wrap(ExpandGrid(vector1, vector2));
+    rcpp_result_gen = Rcpp::wrap(ExpandGrid(vec1, vec2));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -175,15 +163,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_FlexRL_F2", (DL_FUNC) &_FlexRL_F2, 2},
-    {"_FlexRL_F33", (DL_FUNC) &_FlexRL_F33, 3},
-    {"_FlexRL_sspaste2", (DL_FUNC) &_FlexRL_sspaste2, 1},
+    {"_FlexRL_indexPatterns", (DL_FUNC) &_FlexRL_indexPatterns, 2},
+    {"_FlexRL_pairPatterns", (DL_FUNC) &_FlexRL_pairPatterns, 3},
+    {"_FlexRL_pasteIntoPattern", (DL_FUNC) &_FlexRL_pasteIntoPattern, 1},
     {"_FlexRL_initDeltaMap", (DL_FUNC) &_FlexRL_initDeltaMap, 0},
     {"_FlexRL_Deltafind", (DL_FUNC) &_FlexRL_Deltafind, 0},
     {"_FlexRL_sampleD", (DL_FUNC) &_FlexRL_sampleD, 9},
     {"_FlexRL_sampleNL", (DL_FUNC) &_FlexRL_sampleNL, 3},
     {"_FlexRL_sampleL", (DL_FUNC) &_FlexRL_sampleL, 9},
-    {"_FlexRL_cartesianProduct", (DL_FUNC) &_FlexRL_cartesianProduct, 2},
     {"_FlexRL_ExpandGrid", (DL_FUNC) &_FlexRL_ExpandGrid, 2},
     {"_FlexRL_generateSequence", (DL_FUNC) &_FlexRL_generateSequence, 1},
     {"_FlexRL_sampleH", (DL_FUNC) &_FlexRL_sampleH, 12},
